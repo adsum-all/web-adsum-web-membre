@@ -60,26 +60,55 @@ const TABS: TabId[] = ["carte", "activites", "calendrier", "historique", "profil
 interface TabBarProps {
   active: TabId;
   onChange: (tab: TabId) => void;
+  /** Count of pending member actions, shown as a discreet dot on the Profil tab so
+   * the signal stays visible even when the member is on another tab. */
+  profilBadge?: number;
 }
 
-export function TabBar({ active, onChange }: TabBarProps): JSX.Element {
+export function TabBar({ active, onChange, profilBadge = 0 }: TabBarProps): JSX.Element {
   const t = useT();
   return (
     <nav className="tabbar" aria-label="Navigation">
-      {TABS.map((id) => (
-        <button
-          key={id}
-          type="button"
-          className={`tab ${active === id ? "tab-active" : ""}`}
-          onClick={() => onChange(id)}
-          aria-current={active === id ? "page" : undefined}
-        >
-          <span className="tab-glyph">
-            <TabIcon id={id} />
-          </span>
-          <span className="tab-label">{t(`nav.${id}`)}</span>
-        </button>
-      ))}
+      {TABS.map((id) => {
+        const badge = id === "profil" ? profilBadge : 0;
+        return (
+          <button
+            key={id}
+            type="button"
+            className={`tab ${active === id ? "tab-active" : ""}`}
+            onClick={() => onChange(id)}
+            aria-current={active === id ? "page" : undefined}
+          >
+            <span className="tab-glyph" style={{ position: "relative" }}>
+              <TabIcon id={id} />
+              {badge > 0 && (
+                <span
+                  aria-label={`${badge} action${badge > 1 ? "s" : ""} en attente`}
+                  style={{
+                    position: "absolute",
+                    top: -4,
+                    right: -8,
+                    minWidth: 15,
+                    height: 15,
+                    padding: "0 4px",
+                    borderRadius: 8,
+                    background: "#c0392b",
+                    color: "#fff",
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                    lineHeight: "15px",
+                    textAlign: "center",
+                    boxShadow: "0 0 0 2px var(--adsum-panel, #fff)",
+                  }}
+                >
+                  {badge}
+                </span>
+              )}
+            </span>
+            <span className="tab-label">{t(`nav.${id}`)}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 }

@@ -352,7 +352,12 @@ export function Calendrier({
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
         {cells.map((cell) => {
-          const hasEvents = (eventsByDay.get(cell.key) ?? []).length > 0;
+          const dayEvents = eventsByDay.get(cell.key) ?? [];
+          const hasEvents = dayEvents.length > 0;
+          // Up to three distinct type colours, so a day shows its events' colours
+          // (no longer all blue). Events without a catalogue type use the shared neutral,
+          // identical across the back office, collaboration and the member app.
+          const dayColours = [...new Set(dayEvents.map((e) => e.couleur || "#64748B"))].slice(0, 3);
           const hasBirthday = (birthdaysByDay.get(cell.key) ?? []).length > 0;
           const isSelected = cell.key === selected;
           const isToday = cell.key === todayKey;
@@ -376,7 +381,9 @@ export function Calendrier({
             >
               {cell.day}
               <span style={{ position: "absolute", bottom: 5, left: 0, right: 0, display: "flex", gap: 3, justifyContent: "center" }}>
-                {hasEvents && <span style={{ width: 5, height: 5, borderRadius: "50%", background: isSelected ? "#fff" : T.b600 }} />}
+                {hasEvents && dayColours.map((c, i) => (
+                  <span key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: isSelected ? "#fff" : c }} />
+                ))}
                 {hasBirthday && <span style={{ width: 5, height: 5, borderRadius: "50%", background: isSelected ? "#ffd9a0" : T.warn }} />}
               </span>
             </button>
@@ -384,7 +391,7 @@ export function Calendrier({
         })}
       </div>
 
-      <CalendrierJour events={selectedEvents} anniversaires={selectedBirthdays} onJoin={onJoin} />
+      <CalendrierJour token={token} events={selectedEvents} anniversaires={selectedBirthdays} onJoin={onJoin} />
 
       {sheetOpen && (
         <CalendrierFiltres

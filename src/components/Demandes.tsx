@@ -93,9 +93,10 @@ function Etapes({ d }: { d: DemandeDetail }): JSX.Element {
   );
 }
 
-export function Demandes({ token }: { token: string }): JSX.Element {
-  const [mode, setMode] = useState<"list" | "new" | "thread">("list");
-  const [openId, setOpenId] = useState<string | null>(null);
+export function Demandes({ token, focusId }: { token: string; focusId?: string | null }): JSX.Element {
+  // When a reminder deep-links to a specific request, open its thread straight away.
+  const [mode, setMode] = useState<"list" | "new" | "thread">(focusId ? "thread" : "list");
+  const [openId, setOpenId] = useState<string | null>(focusId ?? null);
 
   if (mode === "new") return <NewDemande token={token} onDone={() => setMode("list")} onCancel={() => setMode("list")} />;
   if (mode === "thread" && openId)

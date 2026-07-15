@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   ApiError,
+  type ActionsAttendues,
   type EvenementOut,
   type InscriptionStatut,
   type MembreProfile,
   type PresenceOut,
   detectFuseau,
+  getActionsAttendues,
   getInscription,
   getMembreProfile,
   getPhotoUrl,
@@ -21,6 +23,7 @@ import { CompleterProfil } from "./components/CompleterProfil.js";
 import { Activites } from "./components/Activites.js";
 import { Calendrier } from "./components/Calendrier.js";
 import { Carte } from "./components/Carte.js";
+import { ActionBanner } from "./components/ActionBanner.js";
 import { Consultations } from "./components/Consultations.js";
 import { DetailPresence } from "./components/DetailPresence.js";
 import { Document } from "./components/Document.js";
@@ -37,6 +40,7 @@ import { Notifications } from "./components/Notifications.js";
 import { Recensement } from "./components/Recensement.js";
 import { Secu } from "./components/Secu.js";
 import { Session } from "./components/Session.js";
+import { MesApplications } from "./components/MesApplications.js";
 import { Settings } from "./components/Settings.js";
 import { Suivi } from "./components/Suivi.js";
 import { TabBar, type TabId } from "./components/TabBar.js";
@@ -53,7 +57,8 @@ type ViewId =
   | "sent"
   | "infos"
   | "demandes"
-  | "consultations";
+  | "consultations"
+  | "mesApplications";
 
 /** i18n key of each screen title, resolved through the translator at render. */
 const VIEW_TITLES: Record<ViewId, string> = {
@@ -69,6 +74,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   infos: "profilNav.infos.title",
   demandes: "profilNav.demandes.title",
   consultations: "profilNav.consultations.title",
+  mesApplications: "profilNav.apps.title",
 };
 
 const HIDE_CHROME: ViewId[] = ["session", "sent"];
@@ -108,6 +114,13 @@ export function App(): JSX.Element {
   const [inscriptionError, setInscriptionError] = useState(false);
   // A technical/admin account (no member profile) logging into the member app.
   const [compteNonMembre, setCompteNonMembre] = useState(false);
+  // Requests awaiting the member's own action (documents asked, fields unlocked),
+  // driving the discreet reminder banner and the profile/nav badges.
+  const [actions, setActions] = useState<ActionsAttendues | null>(null);
+  // When the member opens the reminder for a single request, deep-link straight to it.
+  const [demandeFocus, setDemandeFocus] = useState<string | null>(null);
+  // Session-only dismissal of the calm banner (a real deadline is never dismissible).
+  const [actionsMasquees, setActionsMasquees] = useState(false);
 
   const refreshInscription = useCallback((jwt: string) => {
     setInscriptionError(false);
@@ -186,6 +199,30 @@ export function App(): JSX.Element {
     if (token) void getMembreProfile(token).then(setProfile).catch(() => undefined);
   }, [token]);
 
+  // Pending-action summary: refreshed on demand (open, act, come back). A failure
+  // never fabricates a count, it simply leaves the last known state untouched.
+  const refreshActions = useCallback(() => {
+    if (token) void getActionsAttendues(token).then(setActions).catch(() => undefined);
+  }, [token]);
+
+  // Keep the reminder honest without polling hard: load it on sign-in, refresh it
+  // when the member returns to the app (a request may have moved server-side), and
+  // once every few minutes while the app stays open.
+  useEffect(() => {
+    if (!token) {
+      setActions(null);
+      return;
+    }
+    refreshActions();
+    const onFocus = (): void => refreshActions();
+    window.addEventListener("focus", onFocus);
+    const timer = window.setInterval(refreshActions, 180000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(timer);
+    };
+  }, [token, refreshActions]);
+
   const onAuth = useCallback(
     (ctx: AuthContext) => {
       if (ctx.doitChangerMdp) {
@@ -205,8 +242,21 @@ export function App(): JSX.Element {
     setView(null);
     setFirstLogin(null);
     setInscription(null);
+    setActions(null);
+    setDemandeFocus(null);
+    setActionsMasquees(false);
     setTab("carte");
   }, [token]);
+
+  // Open the pending request(s) from any surface: jump straight to the single
+  // request when there is exactly one, else open the list so nothing is hidden.
+  const openDemandes = useCallback((focusId: string | null) => {
+    setDemandeFocus(focusId);
+    setNotifOpen(false);
+    setRecensementOpen(false);
+    setDossierOpen(false);
+    setView("demandes");
+  }, []);
 
   // Restore a persisted session on load: fetch the profile and status; if the
   // token is no longer valid (expired or revoked) sign out cleanly.
@@ -394,7 +444,15 @@ export function App(): JSX.Element {
             <button
               type="button"
               className="bell"
-              onClick={() => setView(view === "suivi" || view === "engage" ? "identite" : null)}
+              onClick={() => {
+                // Leaving a request may have changed what awaits the member (they
+                // just replied or sent a document): refresh the reminder.
+                if (view === "demandes") {
+                  setDemandeFocus(null);
+                  refreshActions();
+                }
+                setView(view === "suivi" || view === "engage" ? "identite" : null);
+              }}
             >
               {t("common.close")}
             </button>
@@ -437,9 +495,11 @@ export function App(): JSX.Element {
         ) : view === "infos" ? (
           <Infos token={token} profile={profile} onDemande={() => setView("demandes")} onProfileChange={reloadProfile} />
         ) : view === "demandes" ? (
-          <Demandes token={token} />
+          <Demandes token={token} focusId={demandeFocus} />
         ) : view === "consultations" ? (
           <Consultations token={token} />
+        ) : view === "mesApplications" ? (
+          <MesApplications token={token} />
         ) : view === "secu" ? (
           <Secu token={token} onSettings={() => setView("settings")} />
         ) : view === "session" && activeEvent ? (
@@ -473,6 +533,13 @@ export function App(): JSX.Element {
           />
         ) : (
           <>
+            {actions && actions.total > 0 && !(actionsMasquees && actions.urgence_max === "normale") && (
+              <ActionBanner
+                actions={actions}
+                onOpen={() => openDemandes(actions.cible_unique_id)}
+                onDismiss={actions.urgence_max === "normale" ? () => setActionsMasquees(true) : undefined}
+              />
+            )}
             {tab === "carte" && <Carte token={token} profile={profile} />}
             {tab === "activites" && (
               <Activites
@@ -511,8 +578,10 @@ export function App(): JSX.Element {
                 onSecu={() => setView("secu")}
                 onSettings={() => setView("settings")}
                 onInfos={() => setView("infos")}
-                onDemandes={() => setView("demandes")}
+                onDemandes={() => openDemandes(null)}
                 onConsultations={() => setView("consultations")}
+                onMesApplications={() => setView("mesApplications")}
+                demandesBadge={actions?.total ?? 0}
               />
             )}
           </>
@@ -521,6 +590,7 @@ export function App(): JSX.Element {
       {!chromeHidden && (
         <TabBar
           active={tab}
+          profilBadge={actions?.total ?? 0}
           onChange={(t) => {
             setNotifOpen(false);
             setRecensementOpen(false);
@@ -528,6 +598,7 @@ export function App(): JSX.Element {
             setView(null);
             setActiveEvent(null);
             setTab(t);
+            refreshActions();
           }}
         />
       )}
@@ -623,12 +694,14 @@ function NavRow({
   subtitle,
   onClick,
   accent,
+  badge = 0,
 }: {
   glyph: string;
   title: string;
   subtitle: string;
   onClick: () => void;
   accent?: boolean;
+  badge?: number;
 }): JSX.Element {
   return (
     <div
@@ -667,6 +740,26 @@ function NavRow({
           {subtitle}
         </div>
       </div>
+      {badge > 0 && (
+        <span
+          aria-label={`${badge} action${badge > 1 ? "s" : ""} en attente`}
+          style={{
+            minWidth: 20,
+            height: 20,
+            padding: "0 6px",
+            borderRadius: 10,
+            background: T.warn,
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: 700,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {badge}
+        </span>
+      )}
       <span style={{ color: T.faint, fontSize: 18 }}>›</span>
     </div>
   );
@@ -683,6 +776,8 @@ function Profil({
   onInfos,
   onDemandes,
   onConsultations,
+  onMesApplications,
+  demandesBadge = 0,
 }: {
   token: string;
   profile: MembreProfile | null;
@@ -694,6 +789,8 @@ function Profil({
   onInfos: () => void;
   onDemandes: () => void;
   onConsultations: () => void;
+  onMesApplications: () => void;
+  demandesBadge?: number;
 }): JSX.Element {
   const t = useT();
   const fullName =
@@ -783,9 +880,10 @@ function Profil({
 
       <NavRow glyph="✓" title={t("profilNav.identite.title")} subtitle={t("profilNav.identite.sub")} onClick={onIdentite} accent={verified} />
       <NavRow glyph="≣" title={t("profilNav.infos.title")} subtitle={t("profilNav.infos.sub")} onClick={onInfos} />
-      <NavRow glyph="✉" title={t("profilNav.demandes.title")} subtitle={t("profilNav.demandes.sub")} onClick={onDemandes} />
+      <NavRow glyph="✉" title={t("profilNav.demandes.title")} subtitle={t("profilNav.demandes.sub")} onClick={onDemandes} badge={demandesBadge} />
       <NavRow glyph="🗳" title={t("profilNav.consultations.title")} subtitle={t("profilNav.consultations.sub")} onClick={onConsultations} />
       <NavRow glyph="🗎" title={t("profilNav.dossier.title")} subtitle={t("profilNav.dossier.sub")} onClick={onDossier} />
+      <NavRow glyph="▦" title={t("profilNav.apps.title")} subtitle={t("profilNav.apps.sub")} onClick={onMesApplications} />
       <NavRow glyph="🔒" title={t("profilNav.secu.title")} subtitle={t("profilNav.secu.sub")} onClick={onSecu} />
       <NavRow glyph="⚙" title={t("profilNav.settings.title")} subtitle={t("profilNav.settings.sub")} onClick={onSettings} />
       <NavRow glyph="↻" title={t("profilNav.recensement.title")} subtitle={t("profilNav.recensement.sub")} onClick={onRecensement} />

@@ -5,10 +5,12 @@ import {
   type DocumentItem,
   type FonctionItem,
   type MembreProfile,
+  type NiveauItem,
   type ProfilFields,
   type RefItem,
   getDocuments,
   getFonctions,
+  getNiveaux,
   getReference,
   isNeedsSignature,
   soumettreInscription,
@@ -26,7 +28,6 @@ import {
   GENRES,
   RecapRow,
   SITUATIONS,
-  STATUTS,
   Stepper,
   TelegramInvite,
   WIZARD_STEPS,
@@ -134,6 +135,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
   // in which case it is derived from the loaded data (default: intendance).
   const [axeManuel, setAxeManuel] = useState<AxeOrga | null>(null);
   const [fonctions, setFonctions] = useState<FonctionItem[]>([]);
+  const [niveaux, setNiveaux] = useState<NiveauItem[]>([]);
   const [docs, setDocs] = useState<DocumentItem[]>([]);
 
   const [f, setF] = useState<ProfilFields>(() => initialFields(profile));
@@ -187,6 +189,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
     void getReference(token, "coordinations").then(setCoordinations).catch(() => undefined);
     void getReference(token, "groupes").then(setGroupes).catch(() => undefined);
     void getFonctions(token).then((list) => setFonctions(list.filter((x) => x.actif))).catch(() => undefined);
+    void getNiveaux(token).then((list) => setNiveaux(list.filter((x) => x.actif))).catch(() => undefined);
     void getDocuments(token).then(setDocs).catch(() => undefined);
   }, [token]);
 
@@ -517,7 +520,10 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           <Field label={t("profil.statut")} highlight={hl("type_membre")} info={t("profil.statutInfo")}>
             <select style={inp("type_membre")} value={f.type_membre ?? ""} onChange={(e) => set("type_membre", e.target.value)}>
               <option value="">{t("completer.selectPlaceholder")}</option>
-              {STATUTS.map((s) => <option key={s.value} value={s.value}>{t(s.key)}</option>)}
+              {niveaux.map((n) => <option key={n.cle} value={n.cle}>{n.libelle}</option>)}
+              {f.type_membre && !niveaux.some((n) => n.cle === f.type_membre) && (
+                <option value={f.type_membre}>{f.type_membre}</option>
+              )}
             </select>
           </Field>
           <Field label={t("profil.fonction")} highlight={hl("fonction_cle")} info={t("profil.fonctionInfo")}>

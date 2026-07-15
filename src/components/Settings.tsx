@@ -17,6 +17,7 @@ import {
   setMfaCanal,
   setNotifPreferences,
   setTheme,
+  telegramConfirmer,
   telegramLien,
   telegramVerifier,
 } from "../api.js";
@@ -34,9 +35,46 @@ function Toggle({ label, hint, on, onChange }: { label: string; hint?: string; o
       <div
         onClick={() => onChange(!on)}
         className="tap"
-        style={{ width: 44, height: 26, borderRadius: 999, background: on ? T.b600 : T.line, position: "relative", transition: "background .15s" }}
+        role="switch"
+        aria-checked={on}
+        style={{ width: 46, height: 27, borderRadius: 999, boxSizing: "border-box", flexShrink: 0, background: on ? T.b600 : T.bg, border: `1.5px solid ${on ? T.b600 : "#c2c8d6"}`, position: "relative", transition: "background .15s, border-color .15s", cursor: "pointer" }}
       >
-        <div style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: T.surf, transition: "left .15s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
+        <div style={{ position: "absolute", top: 2.5, left: on ? 22 : 3, width: 19, height: 19, borderRadius: "50%", background: "#fff", transition: "left .15s", boxShadow: "0 1px 3px rgba(0,0,0,.28)" }} />
+      </div>
+    </div>
+  );
+}
+
+// Member-facing notification groups, same keys and order as the backend (GROUPES).
+// Each is delivered on the channels the member enables in the matrix; in-app is always on.
+const NOTIF_GROUPES: { key: string; label: string; hint: string }[] = [
+  { key: "dossier", label: "settings.grpDossier", hint: "settings.grpDossierHint" },
+  { key: "collaboration", label: "settings.grpCollaboration", hint: "settings.grpCollaborationHint" },
+  { key: "changements", label: "settings.grpChangements", hint: "settings.grpChangementsHint" },
+  { key: "demarrage", label: "settings.grpDemarrage", hint: "settings.grpDemarrageHint" },
+  { key: "rappels", label: "settings.grpRappels", hint: "settings.grpRappelsHint" },
+  { key: "recap", label: "settings.grpRecap", hint: "settings.grpRecapHint" },
+  { key: "anniversaires", label: "settings.grpAnniversaires", hint: "settings.grpAnniversairesHint" },
+  { key: "pointage", label: "settings.grpPointage", hint: "settings.grpPointageHint" },
+  { key: "annonces", label: "settings.grpAnnonces", hint: "settings.grpAnnoncesHint" },
+];
+
+// A compact per-channel switch used in the notification matrix. When ``disabled`` (the
+// master channel is off), it is greyed and non-interactive: the fine setting is inactive
+// because the whole channel is off, and the UI must say so rather than look active.
+function ChanChip({ on, onClick, disabled = false }: { on: boolean; onClick: () => void; disabled?: boolean }): JSX.Element {
+  const shown = on && !disabled;
+  return (
+    <div style={{ width: 60, display: "flex", justifyContent: "center" }}>
+      <div
+        onClick={disabled ? undefined : onClick}
+        className={disabled ? undefined : "tap"}
+        role="switch"
+        aria-checked={shown}
+        aria-disabled={disabled}
+        style={{ width: 40, height: 24, borderRadius: 999, boxSizing: "border-box", background: shown ? T.b600 : T.bg, border: `1.5px solid ${shown ? T.b600 : "#c2c8d6"}`, position: "relative", transition: "background .15s, border-color .15s", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.4 : 1 }}
+      >
+        <div style={{ position: "absolute", top: 2, left: shown ? 18 : 2.5, width: 17, height: 17, borderRadius: "50%", background: "#fff", transition: "left .15s", boxShadow: "0 1px 3px rgba(0,0,0,.28)" }} />
       </div>
     </div>
   );
@@ -109,6 +147,29 @@ export function Settings({
     if (!prefs) return;
     const next = { ...prefs, [key]: value };
     setPrefs(next);
+    void setNotifPreferences(token, next).catch(() => undefined);
+  }
+
+  function setMatrice(groupe: string, canal: "email" | "telegram", value: boolean): void {
+    if (!prefs) return;
+    const cur = prefs.matrice_canaux ?? {};
+    const grp = { ...(cur[groupe] ?? {}), [canal]: value };
+    // Per-group choice only. The master channel switches are NOT forced on here, so a
+    // member who turned a channel off keeps it off (the previous forcing was the reason
+    // disabling a channel had no effect).
+    const next = { ...prefs, matrice_canaux: { ...cur, [groupe]: grp } };
+    setPrefs(next);
+    void setNotifPreferences(token, next).catch(() => undefined);
+  }
+
+  function allegerEmails(): void {
+    if (!prefs) return;
+    const cur = prefs.matrice_canaux ?? {};
+    const next2: NotifPreferences["matrice_canaux"] = {};
+    for (const g of NOTIF_GROUPES) next2[g.key] = { ...(cur[g.key] ?? {}), email: false, telegram: true };
+    const next = { ...prefs, matrice_canaux: next2 };
+    setPrefs(next);
+    setMsg({ kind: "ok", text: t("settings.reduceEmailsDone") });
     void setNotifPreferences(token, next).catch(() => undefined);
   }
 
@@ -191,11 +252,38 @@ export function Settings({
       <p style={{ fontFamily: T.fm, fontSize: 9, color: T.mut, margin: "16px 0 4px" }}>{t("settings.notifications")}</p>
       {prefs ? (
         <>
-          <Toggle label={t("settings.notifEvents")} on={prefs.evenements} onChange={(v) => togglePref("evenements", v)} />
-          <Toggle label={t("settings.notifRequests")} on={prefs.demandes} onChange={(v) => togglePref("demandes", v)} />
-          <Toggle label={t("settings.notifReminders")} on={prefs.rappels} onChange={(v) => togglePref("rappels", v)} />
-          <Toggle label={t("settings.notifBirthday")} on={prefs.anniversaire} onChange={(v) => togglePref("anniversaire", v)} />
-          <Toggle label={t("settings.notifEmail")} on={prefs.email} onChange={(v) => togglePref("email", v)} />
+          <p style={{ fontSize: 10.5, color: T.mut, lineHeight: 1.5, margin: "0 0 8px" }}>{t("settings.notifIntro")}</p>
+          {/* Master per-channel switches: turning one OFF stops that channel everywhere. */}
+          <Toggle label={t("settings.masterEmail")} hint={t("settings.masterEmailHint")} on={prefs.email} onChange={(v) => togglePref("email", v)} />
+          <Toggle label={t("settings.masterTelegram")} hint={t("settings.masterTelegramHint")} on={prefs.telegram} onChange={(v) => togglePref("telegram", v)} />
+          <p style={{ fontSize: 10, color: T.faint, lineHeight: 1.5, margin: "4px 0 8px" }}>{t("settings.notifPerGroup")}</p>
+          {/* Column header: one switch per channel, per notification group. */}
+          <div style={{ display: "flex", alignItems: "flex-end", padding: "2px 0 4px" }}>
+            <div style={{ flex: 1 }} />
+            <div style={{ width: 60, textAlign: "center", fontSize: 9.5, fontWeight: 700, color: T.mut, opacity: prefs.email ? 1 : 0.4 }}>{t("settings.chanEmail")}</div>
+            <div style={{ width: 60, textAlign: "center", fontSize: 9.5, fontWeight: 700, color: T.b600, opacity: prefs.telegram ? 1 : 0.4 }}>{t("settings.chanTelegram")}</div>
+          </div>
+          {NOTIF_GROUPES.map((g) => {
+            const grp = prefs.matrice_canaux?.[g.key] ?? {};
+            return (
+              <div key={g.key} style={{ display: "flex", alignItems: "center", padding: "9px 0", borderBottom: `1px solid ${T.line}` }}>
+                <div style={{ flex: 1, paddingRight: 8 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600 }}>{t(g.label)}</div>
+                  <div style={{ fontSize: 10, color: T.mut, lineHeight: 1.4 }}>{t(g.hint)}</div>
+                </div>
+                <ChanChip on={grp.email !== false} disabled={!prefs.email} onClick={() => setMatrice(g.key, "email", grp.email === false)} />
+                <ChanChip on={grp.telegram !== false} disabled={!prefs.telegram} onClick={() => setMatrice(g.key, "telegram", grp.telegram === false)} />
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            onClick={allegerEmails}
+            style={{ marginTop: 10, width: "100%", height: 40, borderRadius: 11, border: `1px solid ${T.b600}33`, background: `${T.b600}0f`, color: T.b600, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+          >
+            {t("settings.reduceEmails")}
+          </button>
+          <p style={{ fontSize: 10, color: T.faint, lineHeight: 1.5, margin: "8px 0 0" }}>{t("settings.notifInApp")}</p>
         </>
       ) : (
         <Row label={t("settings.notifications")} hint={t("common.loading")} />
@@ -203,8 +291,8 @@ export function Settings({
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", borderBottom: `1px solid ${T.line}` }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600 }}>{t("settings.mandatoryTitle")}</div>
-          <div style={{ fontSize: 10, color: T.mut, lineHeight: 1.5 }}>{t("settings.mandatoryBody")}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 600 }}>{t("settings.securityTitle")}</div>
+          <div style={{ fontSize: 10, color: T.mut, lineHeight: 1.5 }}>{t("settings.securityBody")}</div>
         </div>
         <span style={{ fontSize: 10, fontWeight: 700, color: T.mut, background: T.bg, border: `1px solid ${T.line}`, borderRadius: 8, padding: "3px 8px", whiteSpace: "nowrap" }}>
           {t("settings.alwaysOn")}
@@ -391,13 +479,59 @@ function MfaSection({ token }: { token: string }): JSX.Element {
         )}
       </div>
 
-      {/* Reinforced mode: a real, honest control (shorter re-verification window). */}
-      <Toggle
-        label={t("settings.mfaReinforced")}
-        hint={t("settings.mfaReinforcedHint")}
-        on={mfa.actif}
-        onChange={(v) => void toggle(v)}
-      />
+      {/* Recommendation banner: the member has not opted in. During the test phase
+          no code is sent to a plain member in the grace window, but the app must
+          tell them it will become mandatory. Staff are told it is already required. */}
+      {mfa.recommander && (
+        <div
+          style={{
+            margin: "10px 0",
+            padding: "10px 12px",
+            borderRadius: 10,
+            background: mfa.relance_forte ? T.warnbg : `${T.b600}0f`,
+            border: `1px solid ${mfa.relance_forte ? T.warn : `${T.b600}33`}`,
+          }}
+        >
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: mfa.relance_forte ? T.warn : T.b600, marginBottom: 3 }}>
+            {mfa.est_staff ? t("settings.mfaRecoStaffTitle") : t("settings.mfaRecoTitle")}
+          </div>
+          <div style={{ fontSize: 10.5, color: T.mut, lineHeight: 1.5 }}>
+            {mfa.est_staff
+              ? t("settings.mfaRecoStaffBody")
+              : mfa.jours_avant_obligation !== null && mfa.jours_avant_obligation > 0
+                ? t("settings.mfaRecoCountdown").replace("{jours}", String(mfa.jours_avant_obligation))
+                : t("settings.mfaRecoNowMandatory")}
+          </div>
+        </div>
+      )}
+
+      {/* Clear on/off control, always visible. A plain member can enable OR disable
+          two-factor authentication at any time; disabling brings the recommendation
+          back. Staff have it mandatory, shown locked with the reinforced sub-option. */}
+      {mfa.est_staff ? (
+        <>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${T.line}` }}>
+            <div style={{ flex: 1, paddingRight: 10 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600 }}>{t("settings.mfa2faLabel")}</div>
+              <div style={{ fontSize: 10, color: T.mut, lineHeight: 1.5 }}>{t("settings.mfaStaffLocked")}</div>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 700, color: T.ok, background: T.okbg, border: `1px solid ${T.ok}33`, borderRadius: 8, padding: "3px 9px", whiteSpace: "nowrap" }}>{t("settings.mfaAlwaysOn")}</span>
+          </div>
+          <Toggle
+            label={t("settings.mfaReinforced")}
+            hint={t("settings.mfaReinforcedHint")}
+            on={mfa.actif}
+            onChange={(v) => void toggle(v)}
+          />
+        </>
+      ) : (
+        <Toggle
+          label={t("settings.mfa2faLabel")}
+          hint={t("settings.mfa2faHint")}
+          on={mfa.actif}
+          onChange={(v) => void toggle(v)}
+        />
+      )}
 
       {mfa.verification_active && (
         <>
@@ -460,14 +594,20 @@ function Canaux({
 }): JSX.Element {
   const t = useT();
   const [deepLink, setDeepLink] = useState<string | null>(null);
+  const [awaitingCode, setAwaitingCode] = useState(false);
+  const [code, setCode] = useState("");
   const [wa, setWa] = useState("");
   const [busy, setBusy] = useState(false);
+  const [linkedNow, setLinkedNow] = useState(false);
+  const telegramLie = (prefs?.telegram_lie ?? false) || linkedNow;
 
   async function lierTelegram(): Promise<void> {
     setBusy(true);
     try {
       const r = await telegramLien(token);
       setDeepLink(r.deep_link);
+      setAwaitingCode(false);
+      setCode("");
       window.open(r.deep_link, "_blank", "noopener");
     } catch {
       onMsg({ kind: "err", text: t("settings.msgTelegramNotConfigured") });
@@ -475,17 +615,37 @@ function Canaux({
       setBusy(false);
     }
   }
+  // Step 1: capture the chat and ask the bot to send a confirmation code TO it.
   async function verifierTelegram(): Promise<void> {
     setBusy(true);
     try {
       const r = await telegramVerifier(token);
-      if (r.linked) {
-        onPref("telegram", true);
-        setDeepLink(null);
-        onMsg({ kind: "ok", text: t("settings.msgTelegramLinked") });
+      if (r.pending_confirmation) {
+        setAwaitingCode(true);
+        onMsg({ kind: "ok", text: r.message ?? t("settings.telegramCodeSent") });
       } else {
         onMsg({ kind: "err", text: r.message ?? t("settings.msgTelegramNotDetected") });
       }
+    } finally {
+      setBusy(false);
+    }
+  }
+  // Step 2: the member re-enters the code the bot sent, proving they control the chat.
+  async function confirmerTelegram(): Promise<void> {
+    if (!code.trim()) return;
+    setBusy(true);
+    try {
+      const r = await telegramConfirmer(token, code.trim());
+      if (r.linked) {
+        setLinkedNow(true);
+        onPref("telegram", true);
+        setDeepLink(null);
+        setAwaitingCode(false);
+        setCode("");
+        onMsg({ kind: "ok", text: t("settings.msgTelegramLinked") });
+      }
+    } catch {
+      onMsg({ kind: "err", text: t("settings.telegramCodeInvalid") });
     } finally {
       setBusy(false);
     }
@@ -515,14 +675,31 @@ function Canaux({
           <div
             onClick={() => void lierTelegram()}
             className="tap"
-            style={{ padding: "8px 14px", borderRadius: 10, background: prefs?.telegram ? T.okbg : T.b600, color: prefs?.telegram ? T.ok : "#fff", fontSize: 12, fontWeight: 600, opacity: busy ? 0.6 : 1 }}
+            style={{ padding: "8px 14px", borderRadius: 10, background: telegramLie ? T.okbg : T.b600, color: telegramLie ? T.ok : "#fff", fontSize: 12, fontWeight: 600, opacity: busy ? 0.6 : 1 }}
           >
-            {prefs?.telegram ? t("settings.linked") : t("settings.link")}
+            {telegramLie ? t("settings.linked") : t("settings.link")}
           </div>
         </div>
-        {deepLink && (
+        {deepLink && !awaitingCode && (
           <div onClick={() => void verifierTelegram()} className="tap" style={{ marginTop: 8, textAlign: "center", padding: "9px", borderRadius: 10, border: `1px solid ${T.b600}`, color: T.b600, fontSize: 12, fontWeight: 600 }}>
             {t("settings.telegramVerify")}
+          </div>
+        )}
+        {awaitingCode && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 10.5, color: T.mut, marginBottom: 6 }}>{t("settings.telegramCodeHint")}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                inputMode="numeric"
+                placeholder="000000"
+                style={{ flex: 1, height: 40, border: `1px solid ${T.line}`, borderRadius: 10, padding: "0 12px", fontSize: 15, letterSpacing: 3, textAlign: "center" }}
+              />
+              <div onClick={() => void confirmerTelegram()} className="tap" style={{ padding: "0 16px", height: 40, display: "flex", alignItems: "center", borderRadius: 10, background: T.b600, color: "#fff", fontSize: 12, fontWeight: 600, opacity: busy || code.length < 6 ? 0.6 : 1 }}>
+                {t("settings.telegramConfirm")}
+              </div>
+            </div>
           </div>
         )}
       </div>
