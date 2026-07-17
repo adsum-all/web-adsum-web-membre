@@ -105,7 +105,11 @@ export function Stepper({ step }: { step: number }): JSX.Element {
   );
 }
 
-/** Sticky back / continue bar, always reachable at the bottom of the step. */
+/** Back / continue bar of a wizard step, rendered IN THE NORMAL FLOW after the
+ * step content. It used to be position:sticky with a translucent gradient: the
+ * bar then floated over the fields while scrolling (the app scrolls inside an
+ * inner container), reading as two superimposed pages and hiding the last
+ * fields of a step. In-flow, it can never cover anything. */
 export function WizardNav({ step, busy, nextLabel, onBack, onNext }: {
   step: number;
   busy?: boolean;
@@ -115,7 +119,7 @@ export function WizardNav({ step, busy, nextLabel, onBack, onNext }: {
 }): JSX.Element {
   const t = useT();
   return (
-    <div style={{ position: "sticky", bottom: 0, marginTop: 16, padding: "10px 0 6px", background: `linear-gradient(transparent, ${T.bg} 35%)`, display: "flex", gap: 10 }}>
+    <div style={{ marginTop: 18, padding: "12px 0 calc(8px + env(safe-area-inset-bottom, 0px))", background: T.bg, borderTop: `1px solid ${T.line}`, display: "flex", gap: 10 }}>
       {step > 0 && (
         <button type="button" onClick={onBack} className="tap" style={{ flex: 1, height: 48, border: `1.5px solid ${T.line}`, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit", fontWeight: 600, fontSize: 14, background: T.surf, color: T.ink, cursor: "pointer" }}>
           {t("completer.back")}

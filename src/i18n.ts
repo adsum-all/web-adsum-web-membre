@@ -536,6 +536,9 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "completer.anneeVisible": { fr: "Afficher mon année de naissance sur mon profil (sinon seul le jour et le mois, pour l'anniversaire, sont visibles)", en: "Show my birth year on my profile (otherwise only the day and month, for the birthday, are visible)" },
   "completer.signatureIntro": { fr: "Lisez les documents puis signez électroniquement avec le code reçu. Cette signature valide votre engagement.", en: "Read the documents then sign electronically with the code you received. This signature validates your commitment." },
   "completer.recapIntro": { fr: "Vérifiez le récapitulatif. Vous pouvez revenir en arrière pour corriger avant d'envoyer.", en: "Review the summary. You can go back to correct before sending." },
+  "completer.recapMatricule": { fr: "Matricule ADSUM (attribué automatiquement)", en: "ADSUM member ID (assigned automatically)" },
+  "completer.refsError": { fr: "Certaines listes (commissions, tribus, rattachements...) n'ont pas pu être chargées. Vérifiez votre connexion puis réessayez.", en: "Some lists (commissions, tribes, attachments...) could not be loaded. Check your connection and try again." },
+  "completer.refsRetry": { fr: "Recharger les listes", en: "Reload the lists" },
 
   "completer.recapNom": { fr: "Nom complet", en: "Full name" },
   "completer.recapTelephone": { fr: "Téléphone", en: "Phone" },
