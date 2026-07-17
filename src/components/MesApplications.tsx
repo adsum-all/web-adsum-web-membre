@@ -76,7 +76,13 @@ export function MesApplications({ token }: { token: string }): JSX.Element {
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", fontSize: 14.5, fontWeight: 600, color: T.ink }}>{a.nom}</span>
                 {a.description && <span style={{ display: "block", fontSize: 12, color: T.mut, marginTop: 2, lineHeight: 1.4 }}>{a.description}</span>}
-                <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "#0f7a4d", background: "#e5f4ec", padding: "2px 8px", borderRadius: 999 }}>{t("apps.active")}</span>
+                {a.ouvrable === false ? (
+                  // Visibility granted but no access group yet: the gate would refuse
+                  // the connection, so never promise an "active access" here.
+                  <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "#8a5a12", background: "#fdf1dd", padding: "2px 8px", borderRadius: 999 }}>{t("apps.waitingRights")}</span>
+                ) : (
+                  <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "#0f7a4d", background: "#e5f4ec", padding: "2px 8px", borderRadius: 999 }}>{t("apps.active")}</span>
+                )}
               </span>
               <span aria-hidden="true" style={{ flexShrink: 0, color: T.faint, fontSize: 20 }}>›</span>
               <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{t("apps.open")}</span>

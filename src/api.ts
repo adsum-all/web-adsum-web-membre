@@ -140,6 +140,9 @@ export interface ApplicationAccessible {
   url?: string | null;
   actif: boolean;
   acces_actif: boolean;
+  /** True when the member can actually CONNECT (default app, or at least one access
+   * group tied to the application). Visibility alone shows the card only. */
+  ouvrable?: boolean;
 }
 
 export function getMesApplications(token: string): Promise<ApplicationAccessible[]> {

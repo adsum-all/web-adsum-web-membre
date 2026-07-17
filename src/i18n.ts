@@ -376,6 +376,7 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "apps.title": { fr: "Mes applications", en: "My applications" },
   "apps.sub": { fr: "Retrouvez les applications auxquelles votre compte a accès.", en: "Find the applications your account can access." },
   "apps.active": { fr: "Accès actif", en: "Active access" },
+  "apps.waitingRights": { fr: "En attente de droits", en: "Waiting for rights" },
   "apps.open": { fr: "Ouvrir l'application", en: "Open the application" },
   "apps.error": { fr: "Impossible de charger vos applications pour le moment.", en: "Your applications could not be loaded right now." },
   "apps.retry": { fr: "Réessayer", en: "Try again" },
