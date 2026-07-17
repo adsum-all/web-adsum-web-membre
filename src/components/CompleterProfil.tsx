@@ -28,7 +28,9 @@ import {
   GENRES,
   RecapRow,
   SITUATIONS,
+  SacrementCheck,
   Stepper,
+  TYPES_MARIAGE,
   TelegramInvite,
   WIZARD_STEPS,
   WizardNav,
@@ -568,8 +570,28 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
               {SITUATIONS.map((s) => <option key={s.value} value={s.value}>{t(s.labelKey)}</option>)}
             </select>
           </Field>
+          {/* The kind of marriage only makes sense once the member declares they
+              are married; it is one of the fields the backend accepts at
+              registration (dot / religious / both / civil). */}
+          {f.situation_matrimoniale === "marie" && (
+            <Field label={t("completer.fTypeMariage")} highlight={hl("type_mariage")}>
+              <select style={inp("type_mariage")} value={f.type_mariage ?? ""} onChange={(e) => set("type_mariage", e.target.value)}>
+                <option value="">{t("completer.selectPlaceholder")}</option>
+                {TYPES_MARIAGE.map((m) => <option key={m.value} value={m.value}>{t(m.labelKey)}</option>)}
+              </select>
+            </Field>
+          )}
           <Field label={t("completer.fProfession")} highlight={hl("profession")}><input style={inp("profession")} value={f.profession} onChange={(e) => set("profession", e.target.value)} /></Field>
           <Field label={t("completer.fNiveauEtudes")} highlight={hl("niveau_etudes")}><input style={inp("niveau_etudes")} value={f.niveau_etudes} onChange={(e) => set("niveau_etudes", e.target.value)} /></Field>
+
+          {/* Sacramental life: legitimate member-declarable data for the community,
+              already accepted by the registration backend. Optional checkboxes so
+              they never block submission. */}
+          <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "18px 2px 2px" }}>{t("completer.secVieSpirituelle")}</p>
+          <p style={{ fontSize: 11, color: T.mut, lineHeight: 1.5, margin: "2px 2px 8px" }}>{t("completer.vieSpirituelleNote")}</p>
+          <SacrementCheck label={t("completer.fBaptise")} checked={!!f.baptise} onChange={(v) => set("baptise", v)} />
+          <SacrementCheck label={t("completer.fPremiereCommunion")} checked={!!f.premiere_communion} onChange={(v) => set("premiere_communion", v)} />
+          <SacrementCheck label={t("completer.fConfirme")} checked={!!f.confirme} onChange={(v) => set("confirme", v)} />
         </>
       )}
 
@@ -616,6 +638,9 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           <RecapRow label={t("completer.recapCommission")} value={commissionNom || t("completer.recapNotChosenF")} ok={!!f.commission_id} />
           <RecapRow label={t("completer.recapRattachement")} value={rattachementTxt || t("completer.recapNotChosenM")} ok={axeOk} />
           <RecapRow label={t("completer.recapTribu")} value={tribuNom || t("completer.recapNotChosenF")} ok={!!f.tribu_id} />
+          {(f.baptise || f.premiere_communion || f.confirme) && (
+            <RecapRow label={t("completer.secVieSpirituelle")} value={[f.baptise ? t("completer.fBaptise") : "", f.premiere_communion ? t("completer.fPremiereCommunion") : "", f.confirme ? t("completer.fConfirme") : ""].filter(Boolean).join(", ")} ok />
+          )}
           <RecapRow label={t("completer.recapPhoto")} value={photoOk ? t("completer.recapProvided") : t("completer.recapMissing")} ok={photoOk} />
           <RecapRow label={t("completer.recapPiece")} value={pieceOk ? t("completer.recapProvided") : t("completer.recapMissing")} ok={pieceOk} />
           <RecapRow label={t("completer.recapSignature")} value={signed ? t("completer.recapVerified") : t("completer.recapMissing")} ok={signed} />

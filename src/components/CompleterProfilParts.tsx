@@ -26,7 +26,24 @@ export const STATUTS = [
   { value: "nouveau_engage", key: "profil.statutNouveau" },
   { value: "inspirant", key: "profil.statutInspirant" },
 ];
+export const TYPES_MARIAGE = [
+  { value: "dot", labelKey: "completer.mariageDot" },
+  { value: "religieux", labelKey: "completer.mariageReligieux" },
+  { value: "dot_et_religieux", labelKey: "completer.mariageDotReligieux" },
+  { value: "civil", labelKey: "completer.mariageCivil" },
+];
 export const DOC_TYPES = ["piece_identite", "passeport", "permis", "carte_consulaire"];
+
+/** An optional sacrament checkbox (baptism, communion, confirmation). Large tap
+ * target, clear checked state, keyboard accessible. */
+export function SacrementCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }): JSX.Element {
+  return (
+    <label className="tap" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 8, border: `1px solid ${checked ? T.b600 : T.line}`, borderRadius: 11, background: checked ? T.tintb : T.surf }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ width: 18, height: 18, accentColor: T.b600 }} />
+      <span style={{ fontSize: 13.5, color: T.ink, fontWeight: checked ? 600 : 400 }}>{label}</span>
+    </label>
+  );
+}
 
 /** Build the initial form state from the loaded profile so nothing is ever lost. */
 export function initialFields(p: MembreProfile | null): ProfilFields {
@@ -49,8 +66,12 @@ export function initialFields(p: MembreProfile | null): ProfilFields {
     tribu_id: p?.tribu_id ?? "",
     groupe: p?.groupe ?? "",
     situation_matrimoniale: p?.situation_matrimoniale ?? "",
+    type_mariage: p?.type_mariage ?? "",
     profession: p?.profession ?? "",
     niveau_etudes: p?.niveau_etudes ?? "",
+    baptise: p?.baptise ?? false,
+    premiere_communion: p?.premiere_communion ?? false,
+    confirme: p?.confirme ?? false,
     type_membre: p?.type_membre ?? "",
     fonction_cle: p?.fonction_cle ?? "",
   };
