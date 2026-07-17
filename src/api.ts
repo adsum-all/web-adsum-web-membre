@@ -34,6 +34,8 @@ export interface MembreProfile {
   nom_marital: string | null;
   nom_affiche: string | null;
   est_berger: boolean;
+  berger_declare: boolean;
+  berger_nom_declare: string | null;
   nom_pastoral: string | null;
   nom_pastoral_affiche: string | null;
   fonction_perimetre: string | null;
@@ -947,6 +949,8 @@ export interface ProfilFields {
   code_membre?: string;
   date_entree?: string;
   promotion?: string;
+  berger_declare?: boolean;
+  berger_nom_declare?: string;
   type_membre?: string;
   fonction_cle?: string;
 }

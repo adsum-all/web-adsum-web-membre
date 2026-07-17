@@ -548,6 +548,11 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
               )}
             </select>
           </Field>
+          {/* Responsibilities and titles: existing community members declare what
+              they already hold. Every declaration here is a PROPOSAL reviewed and
+              confirmed by the administration, never self-granted. */}
+          <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "18px 2px 2px" }}>{t("completer.secTitres")}</p>
+          <p style={{ fontSize: 11, color: T.mut, lineHeight: 1.5, margin: "2px 2px 8px" }}>{t("completer.titresNote")}</p>
           <Field label={t("profil.fonction")} highlight={hl("fonction_cle")} info={t("profil.fonctionInfo")}>
             <select style={inp("fonction_cle")} value={f.fonction_cle ?? ""} onChange={(e) => set("fonction_cle", e.target.value)}>
               <option value="">{t("profil.fonctionAucune")}</option>
@@ -556,6 +561,20 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           </Field>
           {profile?.fonction_cle && !profile.fonction_confirmee && (
             <p style={{ fontSize: 11, color: T.warn, margin: "6px 2px 0" }}>{t("profil.fonctionAttente")}</p>
+          )}
+          <Field label={t("completer.fBergerDeclare")} highlight={hl("berger_declare")} info={t("completer.iBergerDeclare")}>
+            <select style={inp("berger_declare")} value={f.berger_declare ? "oui" : "non"} onChange={(e) => set("berger_declare", e.target.value === "oui")}>
+              <option value="non">{t("completer.bergerNon")}</option>
+              <option value="oui">{t("completer.bergerOui")}</option>
+            </select>
+          </Field>
+          {f.berger_declare && (
+            <>
+              <Field label={t("completer.fBergerNom")} highlight={hl("berger_nom_declare")} info={t("completer.iBergerNom")}>
+                <input style={inp("berger_nom_declare")} value={f.berger_nom_declare ?? ""} onChange={(e) => set("berger_nom_declare", e.target.value)} placeholder={t("completer.phBergerNom")} />
+              </Field>
+              <p style={{ fontSize: 11, color: T.warn, margin: "6px 2px 0" }}>{t("completer.bergerAttente")}</p>
+            </>
           )}
           {/* Community journey: the external member code (uppercased, unique,
               distinct from the ADSUM matricule), the entry date and the promotion.
@@ -653,6 +672,9 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           <RecapRow label={t("completer.recapCommission")} value={commissionNom || t("completer.recapNotChosenF")} ok={!!f.commission_id} />
           <RecapRow label={t("completer.recapRattachement")} value={rattachementTxt || t("completer.recapNotChosenM")} ok={axeOk} />
           <RecapRow label={t("completer.recapTribu")} value={tribuNom || t("completer.recapNotChosenF")} ok={!!f.tribu_id} />
+          {f.berger_declare && (
+            <RecapRow label={t("completer.fBergerDeclare")} value={`${t("completer.bergerOui")}${f.berger_nom_declare ? ` (${f.berger_nom_declare})` : ""}`} ok />
+          )}
           {(f.baptise || f.premiere_communion || f.confirme) && (
             <RecapRow label={t("completer.secVieSpirituelle")} value={[f.baptise ? t("completer.fBaptise") : "", f.premiere_communion ? t("completer.fPremiereCommunion") : "", f.confirme ? t("completer.fConfirme") : ""].filter(Boolean).join(", ")} ok />
           )}
