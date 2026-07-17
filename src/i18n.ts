@@ -540,6 +540,28 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "completer.fPromotion": { fr: "Promotion", en: "Cohort" },
   "completer.iPromotion": { fr: "Le nom de votre promotion, si vous en avez une.", en: "The name of your cohort, if you have one." },
   "completer.phPromotion": { fr: "Ex. Pierre Saint-Paul 1", en: "E.g. Pierre Saint-Paul 1" },
+  "completer.secTitres": { fr: "RESPONSABILITÉS ET TITRES", en: "RESPONSIBILITIES AND TITLES" },
+  "completer.titresNote": {
+    fr: "Si vous occupez déjà une fonction ou un titre dans la communauté, déclarez-le ici. Chaque déclaration sera vérifiée puis confirmée par l'administration.",
+    en: "If you already hold a role or title in the community, declare it here. Every declaration is reviewed and confirmed by the administration.",
+  },
+  "completer.fBergerDeclare": { fr: "Êtes-vous berger / bergère ?", en: "Are you a shepherd?" },
+  "completer.iBergerDeclare": {
+    fr: "Indiquez si vous êtes déjà berger ou bergère au Sacerdoce Royal. Cette déclaration sera confirmée par l'administration.",
+    en: "State whether you already are a shepherd in the community. This declaration will be confirmed by the administration.",
+  },
+  "completer.bergerOui": { fr: "Oui, je suis berger / bergère", en: "Yes, I am a shepherd" },
+  "completer.bergerNon": { fr: "Non", en: "No" },
+  "completer.fBergerNom": { fr: "Nom de berger / bergère (facultatif)", en: "Shepherd name (optional)" },
+  "completer.iBergerNom": {
+    fr: "Le nom pastoral sous lequel vous êtes connu, si vous en avez un.",
+    en: "The pastoral name you are known by, if you have one.",
+  },
+  "completer.phBergerNom": { fr: "Ex. Berger Emmanuel", en: "E.g. Shepherd Emmanuel" },
+  "completer.bergerAttente": {
+    fr: "Votre déclaration de berger / bergère sera vérifiée puis confirmée par l'administration.",
+    en: "Your shepherd declaration will be reviewed and confirmed by the administration.",
+  },
   "completer.fTypeMariage": { fr: "Type de mariage", en: "Type of marriage" },
   "completer.mariageDot": { fr: "Dotal (coutumier)", en: "Dowry (customary)" },
   "completer.mariageReligieux": { fr: "Religieux", en: "Religious" },

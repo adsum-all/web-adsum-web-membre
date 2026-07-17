@@ -77,6 +77,8 @@ export function initialFields(p: MembreProfile | null): ProfilFields {
     confirme: p?.confirme ?? false,
     type_membre: p?.type_membre ?? "",
     fonction_cle: p?.fonction_cle ?? "",
+    berger_declare: p?.berger_declare ?? false,
+    berger_nom_declare: p?.berger_nom_declare ?? "",
   };
 }
 
