@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { ApiError, login, loginVerify } from "../api.js";
+import { ApiError, login, loginVerify, requestLoginCode } from "../api.js";
 import { useT } from "../i18n.js";
 import { PasswordInput } from "./PasswordInput.js";
 
@@ -16,9 +16,14 @@ interface LoginProps {
   onForgot?: () => void;
 }
 
+type Methode = "email" | "matricule" | "code";
+
 export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
   const t = useT();
-  const [email, setEmail] = useState("");
+  // The identifier field carries the e-mail (default), the ADSUM matricule, or the
+  // member code, depending on the chosen method. The server resolves all three.
+  const [methode, setMethode] = useState<Methode>("email");
+  const [identifiant, setIdentifiant] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,12 +39,14 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
     setBusy(true);
     setError(null);
     try {
-      const res = await login(email, password);
+      const res = await login(identifiant.trim(), password);
       if (res.otpRequired) {
         setCanal(res.canal);
         setStep("otp");
       } else if (res.token) {
-        onAuth({ token: res.token, doitChangerMdp: res.doitChangerMdp, email, motDePasse: password });
+        // For the first-login flow, always hand over the canonical e-mail so the
+        // e-mail based OTP works even after a matricule/code sign-in.
+        onAuth({ token: res.token, doitChangerMdp: res.doitChangerMdp, email: res.email ?? identifiant.trim(), motDePasse: password });
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.networkError"));
@@ -53,8 +60,8 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
     setBusy(true);
     setError(null);
     try {
-      const res = await loginVerify(email, password, code.trim(), confiance);
-      if (res.token) onAuth({ token: res.token, doitChangerMdp: res.doitChangerMdp, email, motDePasse: password });
+      const res = await loginVerify(identifiant.trim(), password, code.trim(), confiance);
+      if (res.token) onAuth({ token: res.token, doitChangerMdp: res.doitChangerMdp, email: res.email ?? identifiant.trim(), motDePasse: password });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.networkError"));
     } finally {
@@ -62,11 +69,11 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
     }
   }
 
-  async function renvoyer(): Promise<void> {
+  async function renvoyer(canalChoisi: "email" | "telegram" | "sms" | "auto" = "auto"): Promise<void> {
     setError(null);
     try {
-      const res = await login(email, password);
-      setCanal(res.canal);
+      const canalUtilise = await requestLoginCode(identifiant.trim(), canalChoisi);
+      setCanal(canalUtilise);
       setRenvoye(true);
     } catch {
       setError(t("login.resendError"));
@@ -74,6 +81,13 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
   }
 
   const canalLabel = canal === "telegram" ? t("login.canalTelegram") : t("login.canalEmail");
+  const methodes: { key: Methode; label: string }[] = [
+    { key: "email", label: t("login.methodEmail") },
+    { key: "matricule", label: t("login.methodMatricule") },
+    { key: "code", label: t("login.methodCode") },
+  ];
+  const identLabel = methode === "email" ? t("login.email") : methode === "matricule" ? t("login.identMatricule") : t("login.identCode");
+  const identPlaceholder = methode === "email" ? "" : methode === "matricule" ? t("login.phMatricule") : t("login.phCode");
 
   return (
     <div className="login">
@@ -85,10 +99,55 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
 
       {step === "password" ? (
         <form onSubmit={submitPassword} className="login-form">
+          <div
+            role="tablist"
+            aria-label={t("login.methodLabel")}
+            style={{ display: "flex", gap: 6, background: "rgba(127,127,127,.10)", borderRadius: 12, padding: 4, marginBottom: 2 }}
+          >
+            {methodes.map((m) => {
+              const actif = methode === m.key;
+              return (
+                <button
+                  key={m.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={actif}
+                  onClick={() => { setMethode(m.key); setError(null); }}
+                  style={{
+                    flex: 1,
+                    minHeight: 40,
+                    border: "none",
+                    borderRadius: 9,
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: actif ? 700 : 500,
+                    color: actif ? "#0b1a3a" : "#5a6478",
+                    background: actif ? "#fff" : "transparent",
+                    boxShadow: actif ? "0 1px 4px rgba(0,0,0,.14)" : "none",
+                    transition: "background .15s, color .15s",
+                  }}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
           <label>
-            <span>{t("login.email")}</span>
-            <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <span>{identLabel}</span>
+            <input
+              type={methode === "email" ? "email" : "text"}
+              inputMode={methode === "email" ? "email" : "text"}
+              autoCapitalize={methode === "email" ? "off" : "characters"}
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="username"
+              placeholder={identPlaceholder}
+              value={identifiant}
+              onChange={(e) => setIdentifiant(e.target.value)}
+              required
+            />
           </label>
+          {methode === "email" && <p className="login-sub" style={{ margin: "-4px 0 2px", fontSize: 11.5, opacity: 0.75 }}>{t("login.methodHint")}</p>}
           <label>
             <span>{t("login.password")}</span>
             <PasswordInput autoComplete="current-password" value={password} onChange={setPassword} required />
@@ -127,10 +186,15 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
           <button type="submit" className="btn btn-primary btn-block" disabled={busy || code.length < 6}>
             {busy ? t("login.verifying") : t("login.validateCode")}
           </button>
-          <button type="button" className="login-link" onClick={() => void renvoyer()}>
+          <button type="button" className="login-link" onClick={() => void renvoyer(canal === "telegram" ? "telegram" : "email")}>
             {renvoye ? t("login.codeSent") : t("login.resendCode")}
           </button>
-          <button type="button" className="login-link" onClick={() => { setStep("password"); setCode(""); setError(null); }}>
+          {canal === "telegram" && (
+            <button type="button" className="login-link" onClick={() => void renvoyer("email")}>
+              {t("login.receiveByEmail")}
+            </button>
+          )}
+          <button type="button" className="login-link" onClick={() => { setStep("password"); setCode(""); setError(null); setRenvoye(false); }}>
             {t("login.backToLogin")}
           </button>
         </form>

@@ -26,7 +26,24 @@ export const STATUTS = [
   { value: "nouveau_engage", key: "profil.statutNouveau" },
   { value: "inspirant", key: "profil.statutInspirant" },
 ];
+export const TYPES_MARIAGE = [
+  { value: "dot", labelKey: "completer.mariageDot" },
+  { value: "religieux", labelKey: "completer.mariageReligieux" },
+  { value: "dot_et_religieux", labelKey: "completer.mariageDotReligieux" },
+  { value: "civil", labelKey: "completer.mariageCivil" },
+];
 export const DOC_TYPES = ["piece_identite", "passeport", "permis", "carte_consulaire"];
+
+/** An optional sacrament checkbox (baptism, communion, confirmation). Large tap
+ * target, clear checked state, keyboard accessible. */
+export function SacrementCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }): JSX.Element {
+  return (
+    <label className="tap" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 8, border: `1px solid ${checked ? T.b600 : T.line}`, borderRadius: 11, background: checked ? T.tintb : T.surf }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ width: 18, height: 18, accentColor: T.b600 }} />
+      <span style={{ fontSize: 13.5, color: T.ink, fontWeight: checked ? 600 : 400 }}>{label}</span>
+    </label>
+  );
+}
 
 /** Build the initial form state from the loaded profile so nothing is ever lost. */
 export function initialFields(p: MembreProfile | null): ProfilFields {
@@ -49,8 +66,12 @@ export function initialFields(p: MembreProfile | null): ProfilFields {
     tribu_id: p?.tribu_id ?? "",
     groupe: p?.groupe ?? "",
     situation_matrimoniale: p?.situation_matrimoniale ?? "",
+    type_mariage: p?.type_mariage ?? "",
     profession: p?.profession ?? "",
     niveau_etudes: p?.niveau_etudes ?? "",
+    baptise: p?.baptise ?? false,
+    premiere_communion: p?.premiere_communion ?? false,
+    confirme: p?.confirme ?? false,
     type_membre: p?.type_membre ?? "",
     fonction_cle: p?.fonction_cle ?? "",
   };
@@ -105,7 +126,11 @@ export function Stepper({ step }: { step: number }): JSX.Element {
   );
 }
 
-/** Sticky back / continue bar, always reachable at the bottom of the step. */
+/** Back / continue bar of a wizard step, rendered IN THE NORMAL FLOW after the
+ * step content. It used to be position:sticky with a translucent gradient: the
+ * bar then floated over the fields while scrolling (the app scrolls inside an
+ * inner container), reading as two superimposed pages and hiding the last
+ * fields of a step. In-flow, it can never cover anything. */
 export function WizardNav({ step, busy, nextLabel, onBack, onNext }: {
   step: number;
   busy?: boolean;
@@ -115,7 +140,7 @@ export function WizardNav({ step, busy, nextLabel, onBack, onNext }: {
 }): JSX.Element {
   const t = useT();
   return (
-    <div style={{ position: "sticky", bottom: 0, marginTop: 16, padding: "10px 0 6px", background: `linear-gradient(transparent, ${T.bg} 35%)`, display: "flex", gap: 10 }}>
+    <div style={{ marginTop: 18, padding: "12px 0 calc(8px + env(safe-area-inset-bottom, 0px))", background: T.bg, borderTop: `1px solid ${T.line}`, display: "flex", gap: 10 }}>
       {step > 0 && (
         <button type="button" onClick={onBack} className="tap" style={{ flex: 1, height: 48, border: `1.5px solid ${T.line}`, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit", fontWeight: 600, fontSize: 14, background: T.surf, color: T.ink, cursor: "pointer" }}>
           {t("completer.back")}

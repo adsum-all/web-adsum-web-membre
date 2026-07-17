@@ -27,6 +27,7 @@ describe("api client", () => {
       token: "jwt-123",
       doitChangerMdp: false,
       canal: null,
+      email: null,
     });
   });
 
@@ -37,6 +38,7 @@ describe("api client", () => {
       token: null,
       doitChangerMdp: false,
       canal: "email",
+      email: null,
     });
   });
 

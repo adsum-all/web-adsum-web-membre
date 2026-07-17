@@ -95,6 +95,10 @@ export interface EvenementOut {
   id: string;
   titre: string;
   type: string | null;
+  /** Catalogue event type (name + unique colour), used to colour and label the calendar. */
+  type_evenement_id?: string | null;
+  type_evenement_nom?: string | null;
+  couleur?: string | null;
   volet: string;
   debut: string;
   fin: string | null;
@@ -109,9 +113,52 @@ export interface EvenementOut {
   cible_id?: string | null;
   cible_libelle?: string | null;
   tags?: { id: string; cle: string; libelle: string }[];
+  /** Editorial detail shown to the member on the activity card (public information). */
+  description?: string | null;
+  intervenant_principal?: string | null;
+  intervenants?: string[];
   phase: "a_venir" | "bientot" | "en_cours" | "termine";
   joignable: boolean;
   formulaire_ouvert: boolean;
+}
+
+/** A public attachment of an activity, opened inside the app (never leaves it). */
+export interface PieceEvenement {
+  id: string;
+  nom: string;
+  type: string;
+  taille: number;
+  url: string;
+  cree_le?: string | null;
+}
+
+/** An application the connected member has been granted access to (LEVEL 1: visibility). */
+export interface ApplicationAccessible {
+  code: string;
+  nom: string;
+  description?: string | null;
+  url?: string | null;
+  actif: boolean;
+  acces_actif: boolean;
+  /** True when the member can actually CONNECT (default app, or at least one access
+   * group tied to the application). Visibility alone shows the card only. */
+  ouvrable?: boolean;
+}
+
+export function getMesApplications(token: string): Promise<ApplicationAccessible[]> {
+  return authedGet<ApplicationAccessible[]>(
+    "/api/v1/membres/me/applications",
+    token,
+    apiMsg("Applications indisponibles", "Applications unavailable"),
+  );
+}
+
+export function getEvenementPieces(token: string, eventId: string): Promise<PieceEvenement[]> {
+  return authedGet<PieceEvenement[]>(
+    `/api/v1/membres/me/evenements/${eventId}/pieces`,
+    token,
+    apiMsg("Documents indisponibles", "Documents unavailable"),
+  );
 }
 
 export interface FonctionItem {
@@ -165,6 +212,12 @@ export interface NotifPreferences {
   cal_tribu: boolean;
   cal_coordination: boolean;
   cal_intendance: boolean;
+  // Per-group, per-channel matrix. Keys are notification groups; each maps to the
+  // channels that group is delivered on (in-app is always on and not listed here).
+  matrice_canaux: Record<string, { email?: boolean; telegram?: boolean; whatsapp?: boolean; sms?: boolean }>;
+  // Whether a Telegram chat is actually bound to this member (true only after the member
+  // completed the secure link with the confirmation code). Drives the "Linked" indicator.
+  telegram_lie?: boolean;
 }
 
 export interface QuestionItem {
@@ -291,6 +344,9 @@ export interface LoginResult {
   token: string | null;
   doitChangerMdp: boolean;
   canal: string | null;
+  // Canonical account e-mail once the password is validated, so a matricule or
+  // member-code sign-in still drives the e-mail based first-login flow correctly.
+  email: string | null;
 }
 
 /** Stable per-device id kept in localStorage, sent so the server can remember a
@@ -312,31 +368,34 @@ function loginError(status: number): ApiError {
   return new ApiError(apiMsg("Service momentanément indisponible. Réessayez dans un instant.", "Service temporarily unavailable. Try again shortly."), status);
 }
 
-export async function login(email: string, password: string): Promise<LoginResult> {
+/** Sign in with an identifier that may be the e-mail, the ADSUM matricule or the
+ * member code. The server resolves it to the account. */
+export async function login(identifiant: string, password: string): Promise<LoginResult> {
   let res: Response;
   try {
     res = await fetch(`${BASE}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Device-Id": deviceId() },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ identifiant, password }),
     });
   } catch {
     throw new ApiError(apiMsg("Connexion au serveur impossible. Vérifiez votre réseau.", "Cannot reach the server. Check your network."), 0);
   }
   if (!res.ok) throw loginError(res.status);
-  const data = (await res.json()) as { otp_required?: boolean; access_token?: string | null; doit_changer_mdp?: boolean; canal?: string | null };
+  const data = (await res.json()) as { otp_required?: boolean; access_token?: string | null; doit_changer_mdp?: boolean; canal?: string | null; email?: string | null };
   return {
     otpRequired: Boolean(data.otp_required),
     token: data.access_token ?? null,
     doitChangerMdp: Boolean(data.doit_changer_mdp),
     canal: data.canal ?? null,
+    email: data.email ?? null,
   };
 }
 
 /** Second step of a 2FA login: send the one-time code (and optionally trust this
  * device for 30 days) to obtain the session token. */
 export async function loginVerify(
-  email: string,
+  identifiant: string,
   password: string,
   code: string,
   faireConfiance: boolean,
@@ -346,14 +405,33 @@ export async function loginVerify(
     res = await fetch(`${BASE}/api/v1/auth/login-verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Device-Id": deviceId() },
-      body: JSON.stringify({ email, password, code, faire_confiance: faireConfiance }),
+      body: JSON.stringify({ identifiant, password, code, faire_confiance: faireConfiance }),
     });
   } catch {
     throw new ApiError(apiMsg("Connexion au serveur impossible. Vérifiez votre réseau.", "Cannot reach the server. Check your network."), 0);
   }
   if (!res.ok) throw loginError(res.status);
-  const data = (await res.json()) as { access_token?: string | null; doit_changer_mdp?: boolean };
-  return { otpRequired: false, token: data.access_token ?? null, doitChangerMdp: Boolean(data.doit_changer_mdp), canal: null };
+  const data = (await res.json()) as { access_token?: string | null; doit_changer_mdp?: boolean; email?: string | null };
+  return { otpRequired: false, token: data.access_token ?? null, doitChangerMdp: Boolean(data.doit_changer_mdp), canal: null, email: data.email ?? null };
+}
+
+/** Re-send the login code on a chosen channel. Telegram is the default at login;
+ * the member can switch to e-mail (or SMS once enabled) or simply resend. Returns the
+ * channel actually used, so the screen can say where the code was sent. */
+export async function requestLoginCode(identifiant: string, canal: "email" | "telegram" | "sms" | "auto"): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/api/v1/auth/login-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifiant, canal }),
+    });
+  } catch {
+    throw new ApiError(apiMsg("Connexion au serveur impossible. Vérifiez votre réseau.", "Cannot reach the server. Check your network."), 0);
+  }
+  if (!res.ok) throw loginError(res.status);
+  const data = (await res.json()) as { canal?: string };
+  return data.canal ?? canal;
 }
 
 export interface MfaAppareil {
@@ -372,6 +450,12 @@ export interface MfaState {
   canal: "auto" | "telegram" | "email";
   recommander: boolean;
   relance_forte: boolean;
+  // Whether the account belongs to staff (2FA is mandatory for staff).
+  est_staff: boolean;
+  // Whether a login code is (or will be) required for this account.
+  obligatoire: boolean;
+  // Days left before 2FA becomes mandatory for a plain member; null when already obliged.
+  jours_avant_obligation: number | null;
   appareils: MfaAppareil[];
 }
 
@@ -535,8 +619,12 @@ export function telegramLien(token: string): Promise<{ deep_link: string }> {
   return authedPost("/api/v1/membres/me/telegram/lien", token, {}, apiMsg("Lien indisponible", "Link unavailable"));
 }
 
-export function telegramVerifier(token: string): Promise<{ linked: boolean; message?: string }> {
+export function telegramVerifier(token: string): Promise<{ pending_confirmation: boolean; message?: string }> {
   return authedPost("/api/v1/membres/me/telegram/verifier", token, {}, apiMsg("Vérification impossible", "Verification failed"));
+}
+
+export function telegramConfirmer(token: string, code: string): Promise<{ linked: boolean }> {
+  return authedPost("/api/v1/membres/me/telegram/confirmer", token, { code }, apiMsg("Confirmation impossible", "Confirmation failed"));
 }
 
 export function enregistrerWhatsapp(token: string, numero: string): Promise<{ ok: boolean }> {
@@ -761,6 +849,39 @@ export interface DemandeDetail extends Demande {
 
 export function getDemandes(token: string): Promise<Demande[]> {
   return authedGet<Demande[]>("/api/v1/membres/me/demandes", token, apiMsg("Demandes indisponibles", "Requests unavailable"));
+}
+
+export type ActionUrgence = "normale" | "elevee" | "critique";
+
+/** One request awaiting the member's own action, with the timing signals that let
+ * the reminder escalate calmly (age, deadline) rather than nag from minute one. */
+export interface ActionAttendue {
+  id: string;
+  reference: string;
+  sujet: string;
+  statut: string;
+  statut_libelle: string;
+  depuis_jours: number;
+  echeance: string | null;
+  echeance_jours: number | null;
+  urgence: ActionUrgence;
+}
+
+/** Compact summary that drives the discreet "an action awaits you" surfaces. */
+export interface ActionsAttendues {
+  total: number;
+  plus_ancienne_jours: number;
+  urgence_max: ActionUrgence;
+  cible_unique_id: string | null;
+  items: ActionAttendue[];
+}
+
+export function getActionsAttendues(token: string): Promise<ActionsAttendues> {
+  return authedGet<ActionsAttendues>(
+    "/api/v1/membres/me/demandes/en-attente",
+    token,
+    apiMsg("Actions indisponibles", "Actions unavailable"),
+  );
 }
 
 export function getDemande(token: string, id: string): Promise<DemandeDetail> {

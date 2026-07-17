@@ -875,3 +875,36 @@ body {
   border: 2px solid #ffffff;
   box-shadow: 0 6px 18px rgba(16, 22, 40, 0.18);
 }
+
+/* Global affordance for every custom clickable zone (buttons, cards, chips):
+   the .tap class is applied across the app but was never defined, so clickable
+   elements gave no pointer cursor and no press feedback: they did not read as
+   interactive. One rule fixes affordance everywhere at once. */
+.tap {
+  cursor: pointer;
+  transition: transform 120ms ease, opacity 120ms ease, box-shadow 120ms ease;
+  -webkit-tap-highlight-color: rgba(42, 79, 173, 0.12);
+}
+.tap:active {
+  transform: scale(0.985);
+}
+.tap:focus-visible {
+  outline: 2px solid #2a4fad;
+  outline-offset: 2px;
+}
+.tap[disabled],
+.tap[aria-disabled="true"] {
+  cursor: not-allowed;
+  transform: none;
+}
+button:not([disabled]),
+select,
+input[type="checkbox"],
+input[type="radio"],
+label[for] {
+  cursor: pointer;
+}
+input[type="date"],
+input[type="file"] {
+  cursor: pointer;
+}
