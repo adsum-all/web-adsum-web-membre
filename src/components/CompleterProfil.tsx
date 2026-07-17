@@ -557,6 +557,18 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           {profile?.fonction_cle && !profile.fonction_confirmee && (
             <p style={{ fontSize: 11, color: T.warn, margin: "6px 2px 0" }}>{t("profil.fonctionAttente")}</p>
           )}
+          {/* Community journey: the external member code (uppercased, unique,
+              distinct from the ADSUM matricule), the entry date and the promotion.
+              All optional, declared by the member, editable later via requests. */}
+          <Field label={t("completer.fCodeMembre")} highlight={hl("code_membre")} info={t("completer.iCodeMembre")}>
+            <input style={{ ...inp("code_membre"), textTransform: "uppercase" }} value={f.code_membre ?? ""} onChange={(e) => set("code_membre", e.target.value.toUpperCase())} placeholder={t("completer.phCodeMembre")} maxLength={32} />
+          </Field>
+          <Field label={t("completer.fDateEntree")} highlight={hl("date_entree")} info={t("completer.iDateEntree")}>
+            <input type="date" style={inp("date_entree")} value={f.date_entree ?? ""} onChange={(e) => set("date_entree", e.target.value)} />
+          </Field>
+          <Field label={t("completer.fPromotion")} highlight={hl("promotion")} info={t("completer.iPromotion")}>
+            <input style={inp("promotion")} value={f.promotion ?? ""} onChange={(e) => set("promotion", e.target.value)} placeholder={t("completer.phPromotion")} />
+          </Field>
 
           <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "18px 2px 2px" }}>{t("completer.secAdresse")}</p>
           <p style={{ fontSize: 11, color: T.mut, lineHeight: 1.5, margin: "2px 2px 6px" }}>{t("completer.adresseNote")}</p>
@@ -631,6 +643,9 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
               knows their reference before submitting. */}
           {profile?.matricule && (
             <RecapRow label={t("completer.recapMatricule")} value={profile.matricule} ok />
+          )}
+          {f.code_membre?.trim() && (
+            <RecapRow label={t("completer.fCodeMembre")} value={f.code_membre.toUpperCase()} ok />
           )}
           <RecapRow label={t("completer.recapNom")} value={`${f.prenoms} ${f.nom}`.trim() || t("completer.recapEmpty")} ok={!!(f.prenoms && f.nom)} />
           <RecapRow label={t("completer.recapTelephone")} value={f.telephone ? `${f.indicatif_telephone ?? ""} ${f.telephone}` : t("completer.recapEmpty")} ok={!!f.telephone} />

@@ -944,6 +944,9 @@ export interface ProfilFields {
   baptise?: boolean;
   confirme?: boolean;
   premiere_communion?: boolean;
+  code_membre?: string;
+  date_entree?: string;
+  promotion?: string;
   type_membre?: string;
   fonction_cle?: string;
 }
