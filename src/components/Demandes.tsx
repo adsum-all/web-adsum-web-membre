@@ -269,11 +269,16 @@ function Thread({ token, id, onBack }: { token: string; id: string; onBack: () =
   async function send(): Promise<void> {
     if (!draft.trim()) return;
     const corps = draft.trim();
-    setDraft("");
     setBusy(true);
+    setNote(null);
     try {
       const m = await sendDemandeMessage(token, id, corps);
       setDetail((prev) => (prev ? { ...prev, messages: [...prev.messages, m] } : prev));
+      // Only clear the draft once the message is actually persisted, so a network
+      // failure (frequent in the mobile webview) never silently loses what was typed.
+      setDraft("");
+    } catch {
+      setNote(t("demandes.messageSendError"));
     } finally {
       setBusy(false);
     }

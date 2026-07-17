@@ -405,6 +405,7 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "settings.whatsapp": { fr: "WhatsApp", en: "WhatsApp" },
   "settings.telegramVerify": { fr: "J'ai appuyé sur Démarrer, vérifier la liaison", en: "I pressed Start, check the link" },
   "settings.telegramCodeSent": { fr: "Un code vient d'être envoyé sur votre Telegram. Saisissez-le pour confirmer.", en: "A code was just sent to your Telegram. Enter it to confirm." },
+  "settings.telegramVerifyError": { fr: "Envoi du code Telegram impossible pour le moment. Réessayez dans un instant.", en: "Could not send the Telegram code right now. Please try again shortly." },
   "settings.telegramCodeHint": { fr: "Entrez le code à 6 chiffres reçu dans votre conversation Telegram.", en: "Enter the 6-digit code received in your Telegram chat." },
   "settings.telegramConfirm": { fr: "Confirmer", en: "Confirm" },
   "settings.telegramCodeInvalid": { fr: "Code incorrect ou expiré. Réessayez ou redemandez un lien.", en: "Incorrect or expired code. Try again or request a new link." },
@@ -821,6 +822,7 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "demandes.attachmentPrefix": { fr: "Pièce jointe : {name}", en: "Attachment: {name}" },
   "demandes.pieceSent": { fr: "Pièce envoyée dans la demande.", en: "Document sent in the request." },
   "demandes.pieceSendError": { fr: "Envoi de la pièce impossible. Réessayez.", en: "Could not send the document. Please try again." },
+  "demandes.messageSendError": { fr: "Envoi du message impossible. Votre texte a été conservé, réessayez.", en: "Could not send the message. Your text was kept, please try again." },
 
   // Unlocked field editor (ModifierChamps).
   "modif.lblNom": { fr: "Nom", en: "Surname" },

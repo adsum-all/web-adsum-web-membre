@@ -626,6 +626,10 @@ function Canaux({
       } else {
         onMsg({ kind: "err", text: r.message ?? t("settings.msgTelegramNotDetected") });
       }
+    } catch {
+      // The bot may be unreachable (502) or unconfigured (503): tell the member
+      // instead of silently un-busying the button as if nothing happened.
+      onMsg({ kind: "err", text: t("settings.telegramVerifyError") });
     } finally {
       setBusy(false);
     }
