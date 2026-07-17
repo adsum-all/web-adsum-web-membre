@@ -5,10 +5,12 @@ import {
   type DocumentItem,
   type FonctionItem,
   type MembreProfile,
+  type NiveauItem,
   type ProfilFields,
   type RefItem,
   getDocuments,
   getFonctions,
+  getNiveaux,
   getReference,
   isNeedsSignature,
   soumettreInscription,
@@ -26,8 +28,9 @@ import {
   GENRES,
   RecapRow,
   SITUATIONS,
-  STATUTS,
+  SacrementCheck,
   Stepper,
+  TYPES_MARIAGE,
   TelegramInvite,
   WIZARD_STEPS,
   WizardNav,
@@ -134,6 +137,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
   // in which case it is derived from the loaded data (default: intendance).
   const [axeManuel, setAxeManuel] = useState<AxeOrga | null>(null);
   const [fonctions, setFonctions] = useState<FonctionItem[]>([]);
+  const [niveaux, setNiveaux] = useState<NiveauItem[]>([]);
   const [docs, setDocs] = useState<DocumentItem[]>([]);
 
   const [f, setF] = useState<ProfilFields>(() => initialFields(profile));
@@ -180,15 +184,27 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
-  useEffect(() => {
-    void getReference(token, "tribus").then(setTribus).catch(() => undefined);
-    void getReference(token, "commissions").then(setCommissions).catch(() => undefined);
-    void getReference(token, "intendances").then(setIntendances).catch(() => undefined);
-    void getReference(token, "coordinations").then(setCoordinations).catch(() => undefined);
-    void getReference(token, "groupes").then(setGroupes).catch(() => undefined);
-    void getFonctions(token).then((list) => setFonctions(list.filter((x) => x.actif))).catch(() => undefined);
-    void getDocuments(token).then(setDocs).catch(() => undefined);
+  // A silent failure here used to leave EMPTY dropdowns (commissions, tribes,
+  // attachments...) with no explanation. Every load error now raises a visible
+  // banner with a retry action, so the member never faces a mute empty list.
+  const [refsError, setRefsError] = useState(false);
+  const chargerReferentiels = useMemo(() => {
+    return (): void => {
+      setRefsError(false);
+      const signale = (): void => setRefsError(true);
+      void getReference(token, "tribus").then(setTribus).catch(signale);
+      void getReference(token, "commissions").then(setCommissions).catch(signale);
+      void getReference(token, "intendances").then(setIntendances).catch(signale);
+      void getReference(token, "coordinations").then(setCoordinations).catch(signale);
+      void getReference(token, "groupes").then(setGroupes).catch(signale);
+      void getFonctions(token).then((list) => setFonctions(list.filter((x) => x.actif))).catch(signale);
+      void getNiveaux(token).then((list) => setNiveaux(list.filter((x) => x.actif))).catch(signale);
+      void getDocuments(token).then(setDocs).catch(signale);
+    };
   }, [token]);
+  useEffect(() => {
+    chargerReferentiels();
+  }, [chargerReferentiels]);
 
   // Autosave the draft locally once the member has started editing, so a refresh or
   // an accidental back never loses the input. Cleared on a successful submission.
@@ -418,6 +434,15 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
 
       <Stepper step={step} />
 
+      {refsError && (
+        <div style={{ background: T.warnbg, border: `1px solid ${T.warn}`, borderRadius: 11, padding: "10px 12px", margin: "8px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+          <span style={{ fontSize: 12, color: T.warn, lineHeight: 1.45 }}>{t("completer.refsError")}</span>
+          <button type="button" className="tap" onClick={chargerReferentiels} style={{ alignSelf: "flex-start", border: `1.5px solid ${T.warn}`, background: "transparent", color: T.warn, borderRadius: 9, padding: "7px 14px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+            {t("completer.refsRetry")}
+          </button>
+        </div>
+      )}
+
       {step === 0 && (
         <>
           <TelegramInvite token={token} />
@@ -517,7 +542,10 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           <Field label={t("profil.statut")} highlight={hl("type_membre")} info={t("profil.statutInfo")}>
             <select style={inp("type_membre")} value={f.type_membre ?? ""} onChange={(e) => set("type_membre", e.target.value)}>
               <option value="">{t("completer.selectPlaceholder")}</option>
-              {STATUTS.map((s) => <option key={s.value} value={s.value}>{t(s.key)}</option>)}
+              {niveaux.map((n) => <option key={n.cle} value={n.cle}>{n.libelle}</option>)}
+              {f.type_membre && !niveaux.some((n) => n.cle === f.type_membre) && (
+                <option value={f.type_membre}>{f.type_membre}</option>
+              )}
             </select>
           </Field>
           <Field label={t("profil.fonction")} highlight={hl("fonction_cle")} info={t("profil.fonctionInfo")}>
@@ -542,8 +570,28 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
               {SITUATIONS.map((s) => <option key={s.value} value={s.value}>{t(s.labelKey)}</option>)}
             </select>
           </Field>
+          {/* The kind of marriage only makes sense once the member declares they
+              are married; it is one of the fields the backend accepts at
+              registration (dot / religious / both / civil). */}
+          {f.situation_matrimoniale === "marie" && (
+            <Field label={t("completer.fTypeMariage")} highlight={hl("type_mariage")}>
+              <select style={inp("type_mariage")} value={f.type_mariage ?? ""} onChange={(e) => set("type_mariage", e.target.value)}>
+                <option value="">{t("completer.selectPlaceholder")}</option>
+                {TYPES_MARIAGE.map((m) => <option key={m.value} value={m.value}>{t(m.labelKey)}</option>)}
+              </select>
+            </Field>
+          )}
           <Field label={t("completer.fProfession")} highlight={hl("profession")}><input style={inp("profession")} value={f.profession} onChange={(e) => set("profession", e.target.value)} /></Field>
           <Field label={t("completer.fNiveauEtudes")} highlight={hl("niveau_etudes")}><input style={inp("niveau_etudes")} value={f.niveau_etudes} onChange={(e) => set("niveau_etudes", e.target.value)} /></Field>
+
+          {/* Sacramental life: legitimate member-declarable data for the community,
+              already accepted by the registration backend. Optional checkboxes so
+              they never block submission. */}
+          <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "18px 2px 2px" }}>{t("completer.secVieSpirituelle")}</p>
+          <p style={{ fontSize: 11, color: T.mut, lineHeight: 1.5, margin: "2px 2px 8px" }}>{t("completer.vieSpirituelleNote")}</p>
+          <SacrementCheck label={t("completer.fBaptise")} checked={!!f.baptise} onChange={(v) => set("baptise", v)} />
+          <SacrementCheck label={t("completer.fPremiereCommunion")} checked={!!f.premiere_communion} onChange={(v) => set("premiere_communion", v)} />
+          <SacrementCheck label={t("completer.fConfirme")} checked={!!f.confirme} onChange={(v) => set("confirme", v)} />
         </>
       )}
 
@@ -578,12 +626,21 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
       {step === 5 && (
         <>
           <p style={{ fontSize: 12, color: T.mut, lineHeight: 1.5, margin: "10px 2px 8px" }}>{t("completer.recapIntro")}</p>
+          {/* The ADSUM matricule is generated by the system at account creation and
+              can never be typed or edited: it is shown here read-only so the member
+              knows their reference before submitting. */}
+          {profile?.matricule && (
+            <RecapRow label={t("completer.recapMatricule")} value={profile.matricule} ok />
+          )}
           <RecapRow label={t("completer.recapNom")} value={`${f.prenoms} ${f.nom}`.trim() || t("completer.recapEmpty")} ok={!!(f.prenoms && f.nom)} />
           <RecapRow label={t("completer.recapTelephone")} value={f.telephone ? `${f.indicatif_telephone ?? ""} ${f.telephone}` : t("completer.recapEmpty")} ok={!!f.telephone} />
           <RecapRow label={t("completer.recapPaysVille")} value={[f.pays, f.ville].filter(Boolean).join(", ") || t("completer.recapEmpty")} ok={!!(f.pays && f.ville)} />
           <RecapRow label={t("completer.recapCommission")} value={commissionNom || t("completer.recapNotChosenF")} ok={!!f.commission_id} />
           <RecapRow label={t("completer.recapRattachement")} value={rattachementTxt || t("completer.recapNotChosenM")} ok={axeOk} />
           <RecapRow label={t("completer.recapTribu")} value={tribuNom || t("completer.recapNotChosenF")} ok={!!f.tribu_id} />
+          {(f.baptise || f.premiere_communion || f.confirme) && (
+            <RecapRow label={t("completer.secVieSpirituelle")} value={[f.baptise ? t("completer.fBaptise") : "", f.premiere_communion ? t("completer.fPremiereCommunion") : "", f.confirme ? t("completer.fConfirme") : ""].filter(Boolean).join(", ")} ok />
+          )}
           <RecapRow label={t("completer.recapPhoto")} value={photoOk ? t("completer.recapProvided") : t("completer.recapMissing")} ok={photoOk} />
           <RecapRow label={t("completer.recapPiece")} value={pieceOk ? t("completer.recapProvided") : t("completer.recapMissing")} ok={pieceOk} />
           <RecapRow label={t("completer.recapSignature")} value={signed ? t("completer.recapVerified") : t("completer.recapMissing")} ok={signed} />
@@ -598,7 +655,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
         (() => {
           const submitDisabled = busy || !requiredOk || !photoOk || !pieceOk || photoNeedsRedo || pieceNeedsRedo || !signed;
           return (
-            <div style={{ position: "sticky", bottom: 0, marginTop: 16, padding: "10px 0 6px", background: `linear-gradient(transparent, ${T.bg} 35%)`, display: "flex", gap: 10 }}>
+            <div style={{ marginTop: 18, padding: "12px 0 calc(8px + env(safe-area-inset-bottom, 0px))", background: T.bg, borderTop: `1px solid ${T.line}`, display: "flex", gap: 10 }}>
               <button type="button" onClick={() => goTo(4)} className="tap" style={{ flex: 1, height: 50, border: `1.5px solid ${T.line}`, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit", fontWeight: 600, fontSize: 14, background: T.surf, color: T.ink, cursor: "pointer" }}>
                 {t("completer.back")}
               </button>

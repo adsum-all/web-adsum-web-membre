@@ -93,9 +93,10 @@ function Etapes({ d }: { d: DemandeDetail }): JSX.Element {
   );
 }
 
-export function Demandes({ token }: { token: string }): JSX.Element {
-  const [mode, setMode] = useState<"list" | "new" | "thread">("list");
-  const [openId, setOpenId] = useState<string | null>(null);
+export function Demandes({ token, focusId }: { token: string; focusId?: string | null }): JSX.Element {
+  // When a reminder deep-links to a specific request, open its thread straight away.
+  const [mode, setMode] = useState<"list" | "new" | "thread">(focusId ? "thread" : "list");
+  const [openId, setOpenId] = useState<string | null>(focusId ?? null);
 
   if (mode === "new") return <NewDemande token={token} onDone={() => setMode("list")} onCancel={() => setMode("list")} />;
   if (mode === "thread" && openId)
@@ -268,11 +269,16 @@ function Thread({ token, id, onBack }: { token: string; id: string; onBack: () =
   async function send(): Promise<void> {
     if (!draft.trim()) return;
     const corps = draft.trim();
-    setDraft("");
     setBusy(true);
+    setNote(null);
     try {
       const m = await sendDemandeMessage(token, id, corps);
       setDetail((prev) => (prev ? { ...prev, messages: [...prev.messages, m] } : prev));
+      // Only clear the draft once the message is actually persisted, so a network
+      // failure (frequent in the mobile webview) never silently loses what was typed.
+      setDraft("");
+    } catch {
+      setNote(t("demandes.messageSendError"));
     } finally {
       setBusy(false);
     }

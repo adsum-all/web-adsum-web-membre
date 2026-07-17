@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 
-import { type ParticipationMembre, declarerParticipation, getParticipation } from "../api.js";
+import { ApiError, type ParticipationMembre, declarerParticipation, getParticipation } from "../api.js";
 import { useT } from "../i18n.js";
 import { T } from "../proto.js";
 
@@ -99,8 +99,15 @@ export function Participation({ token, eventId, flat = false }: { token: string;
       setData(fresh);
     } catch (e) {
       // Never fail silently: the member must know why nothing happened
-      // (window closed, already recorded, network...).
-      setMsg(e instanceof Error && e.message ? e.message : t("part.error"));
+      // (window closed, already recorded, network...). Prefer the server's precise
+      // reason (ApiError.detail) over the generic fallback label.
+      const reason =
+        e instanceof ApiError && typeof e.detail === "string" && e.detail.trim()
+          ? e.detail
+          : e instanceof Error && e.message
+            ? e.message
+            : t("part.error");
+      setMsg(reason);
       try {
         const fresh = await getParticipation(token, eventId);
         setData(fresh);
