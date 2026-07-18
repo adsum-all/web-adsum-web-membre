@@ -661,6 +661,31 @@ export interface InformationMembre {
   confirme_le?: string | null;
 }
 
+export interface InformationsFeedPage {
+  items: InformationMembre[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+}
+
+export interface InformationsFeedParams {
+  priorite?: "importante" | "urgente" | "normale";
+  lecture?: "lu" | "non_lu";
+  q?: string;
+  mois?: number;
+  annee?: number;
+  type_contenu?: "audio" | "document" | "lien" | "texte";
+  auteur?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** Paginated, filterable, searchable member feed for the Informations tab. */
+export function getMesInformationsFeed(token: string, params: InformationsFeedParams = {}): Promise<InformationsFeedPage> {
+  return authedGet<InformationsFeedPage>(`/api/v1/membres/me/informations/feed${toQuery({ ...params })}`, token, apiMsg("Informations indisponibles", "Information unavailable"));
+}
+
 export function getMesInformations(token: string): Promise<InformationMembre[]> {
   return authedGet<InformationMembre[]>("/api/v1/membres/me/informations", token, apiMsg("Informations indisponibles", "Information unavailable"));
 }
