@@ -95,8 +95,9 @@ export function EcouterTexte({ texte }: { texte: string }): JSX.Element | null {
     } catch {
       /* storage unavailable */
     }
-    // Apply immediately by restarting the reading if it is playing.
-    if (etat !== "arret") {
+    // Apply immediately by restarting only when actively playing; a paused reading
+    // keeps its position and the new speed applies on the next start.
+    if (etat === "lecture") {
       arreter();
       window.setTimeout(() => {
         const u = utterRef.current;
