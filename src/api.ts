@@ -39,7 +39,12 @@ export interface MembreProfile {
   nom_pastoral: string | null;
   nom_pastoral_affiche: string | null;
   fonction_perimetre: string | null;
-  fonctions: { libelle: string; perimetre: string | null }[];
+  fonctions: { libelle: string; perimetre: string | null; cle: string | null; categorie: CategorieAttribution; abreviation: string | null }[];
+  // Resolved organisational appellation (central resolver: special function >
+  // title > function > particular > civil name), ready to display as-is.
+  appellation: string;
+  appellation_formelle: string;
+  categorie_principale: string;
   telephone: string | null;
   indicatif_telephone: string | null;
   groupe: string | null;
@@ -163,11 +168,15 @@ export function getEvenementPieces(token: string, eventId: string): Promise<Piec
   );
 }
 
+export type CategorieAttribution = "titre" | "fonction_speciale" | "fonction" | "fonction_particuliere";
+
 export interface FonctionItem {
   cle: string;
   libelle_h: string;
   libelle_f: string;
   libelle_n: string;
+  categorie: CategorieAttribution;
+  abreviation: string | null;
   est_vip: boolean;
   ordre: number;
   actif: boolean;
@@ -183,6 +192,10 @@ export interface AnniversaireOut {
   commission?: string | null;
   est_vip: boolean;
   titre?: string | null;
+  // Category-aware birthday label ("Modérateur (Berger David)", "Berger David",
+  // "Resp. Jean DUPONT"), resolved server-side. Falls back to the civil name.
+  appellation?: string | null;
+  categorie_principale?: string | null;
 }
 
 export type AnniversaireCategorie =
@@ -953,6 +966,9 @@ export interface ProfilFields {
   berger_nom_declare?: string;
   type_membre?: string;
   fonction_cle?: string;
+  // Four-block registration declarations (special functions, functions, particular
+  // functions) with an optional scope. The consecration title uses berger_declare.
+  fonctions_souhaitees?: { cle: string; perimetre?: string | null }[];
 }
 
 async function authedPatch<T>(path: string, token: string, body: unknown, onError: string): Promise<T> {
