@@ -6,11 +6,10 @@ import {
   type EvenementOut,
   type InscriptionStatut,
   type MembreProfile,
-  type PresenceOut,
   detectFuseau,
   compteurInformations,
+  compteurNotifications,
   getActionsAttendues,
-  getNotifications,
   getInscription,
   getMembreProfile,
   getPhotoUrl,
@@ -27,19 +26,17 @@ import { Calendrier } from "./components/Calendrier.js";
 import { Carte } from "./components/Carte.js";
 import { ActionBanner } from "./components/ActionBanner.js";
 import { Consultations } from "./components/Consultations.js";
-import { DetailPresence } from "./components/DetailPresence.js";
 import { Document } from "./components/Document.js";
 import { Dossier } from "./components/Dossier.js";
 import { Demandes } from "./components/Demandes.js";
 import { Engage } from "./components/Engage.js";
 import { Forgot } from "./components/Forgot.js";
-import { Historique } from "./components/Historique.js";
 import { Informations } from "./components/Informations.js";
 import { Identite } from "./components/Identite.js";
 import { Infos } from "./components/Infos.js";
 import { type AuthContext, Login } from "./components/Login.js";
 import { PremiereConnexion } from "./components/PremiereConnexion.js";
-import { Notifications } from "./components/Notifications.js";
+import { CentreNotifications } from "./components/CentreNotifications.js";
 import { Recensement } from "./components/Recensement.js";
 import { Secu } from "./components/Secu.js";
 import { Session } from "./components/Session.js";
@@ -112,7 +109,6 @@ export function App(): JSX.Element {
   const [recensementOpen, setRecensementOpen] = useState(false);
   const [dossierOpen, setDossierOpen] = useState(false);
   const [view, setView] = useState<ViewId | null>(null);
-  const [detailItem, setDetailItem] = useState<PresenceOut | null>(null);
   const [activeEvent, setActiveEvent] = useState<EvenementOut | null>(null);
   const [authView, setAuthView] = useState<"login" | "forgot">("login");
   const [firstLogin, setFirstLogin] = useState<AuthContext | null>(null);
@@ -218,11 +214,11 @@ export function App(): JSX.Element {
     if (token) void compteurInformations(token).then((r) => setInfoNonLus(r.non_lus)).catch(() => undefined);
   }, [token]);
 
-  // Unread notifications count, for the bell badge. Derived from the list so no new
-  // endpoint is needed; a failure never fabricates a count.
+  // Unread notifications count, for the bell badge. Uses the dedicated counter
+  // endpoint (excludes archived and self-hidden); a failure never fabricates a count.
   const [notifNonLus, setNotifNonLus] = useState(0);
   const refreshNotifCount = useCallback(() => {
-    if (token) void getNotifications(token).then((list) => setNotifNonLus(list.filter((n) => !n.lu).length)).catch(() => undefined);
+    if (token) void compteurNotifications(token).then((r) => setNotifNonLus(r.non_lus)).catch(() => undefined);
   }, [token]);
   useEffect(() => {
     if (!token) {
@@ -558,8 +554,6 @@ export function App(): JSX.Element {
           <Identite token={token} profile={profile} onEngagements={() => setView("engage")} onSuivi={() => setView("suivi")} />
         ) : view === "suivi" ? (
           <Suivi token={token} profile={profile} />
-        ) : view === "detail" && detailItem ? (
-          <DetailPresence presence={detailItem} />
         ) : view === "engage" ? (
           <Engage token={token} onDone={() => setView("identite")} />
         ) : view === "document" ? (
@@ -596,8 +590,9 @@ export function App(): JSX.Element {
         ) : dossierOpen ? (
           <Dossier token={token} />
         ) : notifOpen ? (
-          <Notifications
+          <CentreNotifications
             token={token}
+            onCountChange={refreshNotifCount}
             onDocument={() => {
               setNotifOpen(false);
               setView("document");
@@ -618,31 +613,13 @@ export function App(): JSX.Element {
             )}
             {tab === "carte" && <Carte token={token} profile={profile} />}
             {tab === "activites" && (
-              <>
-                <Activites
-                  token={token}
-                  onJoin={(ev) => {
-                    setActiveEvent(ev);
-                    setView("session");
-                  }}
-                />
-                {/* Past activities live at the bottom of the Activités tab, folded by
-                    default, so they no longer clutter the upcoming list. */}
-                <details style={{ marginTop: 16 }}>
-                  <summary style={{ cursor: "pointer", padding: "8px 2px", fontSize: 13, fontWeight: 700, color: "var(--adsum-mut, #6b7280)" }}>
-                    {t("hist.sectionTitle")}
-                  </summary>
-                  <div style={{ marginTop: 8 }}>
-                    <Historique
-                      token={token}
-                      onSelect={(p) => {
-                        setDetailItem(p);
-                        setView("detail");
-                      }}
-                    />
-                  </div>
-                </details>
-              </>
+              <Activites
+                token={token}
+                onJoin={(ev) => {
+                  setActiveEvent(ev);
+                  setView("session");
+                }}
+              />
             )}
             {tab === "calendrier" && (
               <Calendrier
