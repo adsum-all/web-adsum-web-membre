@@ -324,6 +324,83 @@ export interface NotificationItem {
   cree_le: string | null;
 }
 
+/** One notification as served by the categorized center. */
+export interface NotifCentreItem {
+  id: string;
+  type: string | null;
+  categorie: string;
+  priorite: string;
+  action_requise: boolean;
+  titre: string | null;
+  corps: string | null;
+  lu: boolean;
+  lu_le: string | null;
+  cree_le: string | null;
+}
+
+export interface NotifCentrePage {
+  items: NotifCentreItem[];
+  total: number;
+  non_lus: number;
+  page: number;
+  pages: number;
+  limit: number;
+}
+
+export interface NotifCentreParams {
+  onglet?: "toutes" | "non_lues" | "lues" | "actions" | "systeme";
+  categorie?: string;
+  mois?: number;
+  annee?: number;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** A terminated activity carrying the member's OFFICIAL survey participation status. */
+export interface ActivitePasseeItem {
+  id: string;
+  titre: string;
+  type: string | null;
+  couleur: string | null;
+  mode: string | null;
+  debut: string | null;
+  fin: string | null;
+  lieu: string | null;
+  statut_personnel: "present" | "participe_en_ligne" | "partiel" | "absent" | "non_repondu" | "cloture_sans_reponse";
+  source: string | null;
+  repondu_le: string | null;
+}
+
+export interface ActivitesPasseesPage {
+  items: ActivitePasseeItem[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+}
+
+/** One identity-check (scan) record. A scan is not proof of participation. */
+export interface ControleAccesItem {
+  evenement_id: string;
+  evenement_titre: string | null;
+  debut: string | null;
+  lieu: string | null;
+  arrivee: string | null;
+  depart: string | null;
+  mode: string | null;
+  methode: string | null;
+  resultat: string;
+}
+
+export interface ControlesPage {
+  items: ControleAccesItem[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -786,6 +863,43 @@ export function getQrToken(token: string): Promise<QrToken> {
 
 export function getNotifications(token: string): Promise<NotificationItem[]> {
   return authedGet<NotificationItem[]>("/api/v1/membres/me/notifications", token, apiMsg("Notifications indisponibles", "Notifications unavailable"));
+}
+
+function toQuery(params: Record<string, string | number | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== "" && v !== null) q.set(k, String(v));
+  }
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
+/** Categorized, paginated, status-aware notification center. */
+export function getNotificationsCentre(token: string, params: NotifCentreParams = {}): Promise<NotifCentrePage> {
+  return authedGet<NotifCentrePage>(`/api/v1/membres/me/notifications/centre${toQuery({ ...params })}`, token, apiMsg("Notifications indisponibles", "Notifications unavailable"));
+}
+
+/** Unread badge count (excludes archived and self-hidden). */
+export function compteurNotifications(token: string): Promise<{ non_lus: number }> {
+  return authedGet<{ non_lus: number }>("/api/v1/membres/me/notifications/compteur", token, apiMsg("Compteur indisponible", "Counter unavailable"));
+}
+
+export function marquerNotificationNonLue(token: string, id: string): Promise<void> {
+  return authedPost<void>(`/api/v1/membres/me/notifications/${id}/non-lu`, token, {}, apiMsg("Marquage impossible", "Could not update"));
+}
+
+export function masquerNotification(token: string, id: string): Promise<void> {
+  return authedPost<void>(`/api/v1/membres/me/notifications/${id}/masquer`, token, {}, apiMsg("Masquage impossible", "Could not hide"));
+}
+
+/** Terminated activities with the member's official survey participation status. */
+export function getActivitesPassees(token: string, params: { mois?: number; annee?: number; type_id?: string; statut?: string; q?: string; limit?: number; offset?: number } = {}): Promise<ActivitesPasseesPage> {
+  return authedGet<ActivitesPasseesPage>(`/api/v1/membres/me/activites/passees${toQuery({ ...params })}`, token, apiMsg("Historique indisponible", "History unavailable"));
+}
+
+/** Identity-check (scan) trail. Distinct from participation. */
+export function getControlesAcces(token: string, params: { limit?: number; offset?: number } = {}): Promise<ControlesPage> {
+  return authedGet<ControlesPage>(`/api/v1/membres/me/activites/controles${toQuery({ ...params })}`, token, apiMsg("Contrôles indisponibles", "Controls unavailable"));
 }
 
 export function marquerNotificationLue(token: string, id: string): Promise<void> {
