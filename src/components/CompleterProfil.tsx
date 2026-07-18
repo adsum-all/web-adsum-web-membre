@@ -272,12 +272,37 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
                   {labelFonction(fn)}
                 </button>
                 {sel && avecPerimetre && (
-                  <input
+                  // The scope is ALWAYS picked from the configured units (no free
+                  // text): free entry would create uncontrolled values and break the
+                  // statistics. Options come from the real referential lists.
+                  <select
                     style={{ ...baseInp, marginTop: 6 }}
                     value={perimetreDe(fn.cle)}
                     onChange={(e) => definirPerimetre(fn.cle, e.target.value)}
-                    placeholder={t("completer.phPerimetre")}
-                  />
+                    aria-label={t("completer.phPerimetre")}
+                  >
+                    <option value="">{t("completer.perimetreAucun")}</option>
+                    {commissions.length > 0 && (
+                      <optgroup label={t("hierarchie.commission")}>
+                        {commissions.map((u) => <option key={`cm-${u.id}`} value={`Commission ${u.nom}`}>{u.nom}</option>)}
+                      </optgroup>
+                    )}
+                    {coordinations.length > 0 && (
+                      <optgroup label={t("hierarchie.coordination")}>
+                        {coordinations.map((u) => <option key={`co-${u.id}`} value={`Coordination ${u.nom}`}>{u.nom}</option>)}
+                      </optgroup>
+                    )}
+                    {intendances.length > 0 && (
+                      <optgroup label={t("hierarchie.intendance")}>
+                        {intendances.map((u) => <option key={`it-${u.id}`} value={`Intendance ${u.nom}`}>{u.nom}</option>)}
+                      </optgroup>
+                    )}
+                    {tribus.length > 0 && (
+                      <optgroup label={t("hierarchie.maTribu")}>
+                        {tribus.map((u) => <option key={`tr-${u.id}`} value={`Tribu ${u.nom}`}>{u.nom}</option>)}
+                      </optgroup>
+                    )}
+                  </select>
                 )}
               </div>
             );

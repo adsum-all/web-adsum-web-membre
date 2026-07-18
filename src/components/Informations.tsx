@@ -5,7 +5,9 @@ import { formatDateTime } from "../format.js";
 import { useT } from "../i18n.js";
 import { T } from "../proto.js";
 import { useResource } from "../useResource.js";
+import { AudioPlayer } from "./AudioPlayer.js";
 import { EcouterTexte } from "./EcouterTexte.js";
+import { InfoRichText, texteBrut } from "./InfoRichText.js";
 
 type FiltreId = "toutes" | "non_lues" | "importantes" | "urgentes";
 
@@ -75,12 +77,26 @@ function Detail({ token, id, onBack, onChanged }: { token: string; id: string; o
         {[data.auteur, formatDateTime(data.envoye_le ?? data.cree_le)].filter(Boolean).join(" · ")}
       </p>
 
-      {data.lecture_vocale_auto && <EcouterTexte texte={`${data.titre}. ${data.sous_titre ?? ""}. ${data.contenu}`} />}
+      {data.image_url && (
+        <img src={data.image_url} alt="" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 13, border: `1px solid ${T.line}`, margin: "4px 0 8px" }} />
+      )}
 
-      <div style={{ fontSize: 15, lineHeight: 1.6, color: T.ink, whiteSpace: "pre-wrap", wordBreak: "break-word", margin: "10px 0" }}>
-        {data.contenu}
-      </div>
+      {data.lecture_vocale_auto && <EcouterTexte texte={`${data.titre}. ${data.sous_titre ?? ""}. ${texteBrut(data.contenu)}`} />}
 
+      {data.audio_url && (
+        <>
+          <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "10px 2px 2px" }}>{t("info.voiceNote").toUpperCase()}</p>
+          <AudioPlayer src={data.audio_url} />
+        </>
+      )}
+
+      <InfoRichText texte={data.contenu} />
+
+      {data.document_url && (
+        <a href={data.document_url} download={t("info.documentName")} className="tap" style={btnGhost}>
+          {t("info.openDocument")}
+        </a>
+      )}
       {data.lien_url && (
         <a href={data.lien_url} target="_blank" rel="noopener noreferrer" className="tap" style={btnGhost}>
           {t("info.openLink")}
@@ -198,8 +214,15 @@ export function Informations({ token, onCountChange }: { token: string; onCountC
                     <PrioBadge p={i.priorite} />
                     {epingle && <span style={{ fontSize: 10, color: T.mut }} aria-label={t("info.pinned")}>{"\u{1F4CC}"}</span>}
                   </div>
-                  <strong style={{ fontSize: 15 }}>{i.titre}</strong>
-                  <span className="list-sub">{extrait(i.contenu)}</span>
+                  <strong style={{ fontSize: 15 }}>
+                    {i.titre}
+                    {i.audio_url && (
+                      <span aria-label={t("info.hasAudio")} title={t("info.hasAudio")} style={{ marginLeft: 6, fontSize: 12 }}>
+                        {"\u{1F50A}"}
+                      </span>
+                    )}
+                  </strong>
+                  <span className="list-sub">{extrait(texteBrut(i.contenu))}</span>
                   <span className="list-sub faint">{[i.auteur, formatDateTime(i.envoye_le ?? i.cree_le)].filter(Boolean).join(" · ")}</span>
                 </div>
                 {!i.lu && <span className="dot" aria-label={t("info.unreadAria")} />}

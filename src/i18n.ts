@@ -24,6 +24,11 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "info.empty": { fr: "Aucune information à consulter pour le moment.", en: "No information to read for now." },
   "info.pinned": { fr: "Épinglée", en: "Pinned" },
   "info.unreadAria": { fr: "Non lue", en: "Unread" },
+  "info.voiceNote": { fr: "Note vocale", en: "Voice note" },
+  "info.hasAudio": { fr: "Contient un audio", en: "Contains audio" },
+  "info.openDocument": { fr: "Ouvrir le document joint", en: "Open the attached document" },
+  "info.documentName": { fr: "document-information", en: "information-document" },
+  "completer.perimetreAucun": { fr: "Aucun périmètre précis", en: "No specific scope" },
   "nav.profil": { fr: "Profil", en: "Profile" },
   "nav.calendrier": { fr: "Calendrier", en: "Calendar" },
 
