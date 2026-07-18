@@ -41,26 +41,43 @@ export function nettoyerPourVoix(texte: string): string {
   return s.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-const FEMMES = ["denise", "vivienne", "eloise", "charlotte", "julie", "hortense", "amelie", "celine", "audrey", "virginie", "female", "femme", "aria", "jenny", "libby", "sonia", "nova"];
-const HOMMES = ["henri", "paul", "claude", "thierry", "jerome", "antoine", "fabrice", "male", "homme", "guy", "ryan", "davis"];
+// Known female / male voice names across Windows (SAPI), Edge "Online (Natural)",
+// Android, iOS and Chrome, in French and English. Used to pick a genuine male or
+// female device voice when one exists.
+const FEMMES = ["denise", "vivienne", "eloise", "charlotte", "julie", "hortense", "amelie", "celine", "audrey", "virginie", "brigitte", "juliette", "marie", "aurelie", "jacqueline", "coralie", "josephine", "yvette", "female", "femme", "aria", "jenny", "libby", "sonia", "michelle", "nova", "shimmer"];
+const HOMMES = ["henri", "paul", "claude", "thierry", "jerome", "antoine", "fabrice", "alain", "maurice", "yves", "thomas", "nicolas", "guillaume", "mathieu", "remy", "male", "homme", "guy", "ryan", "davis", "eric", "christopher", "brian", "onyx", "echo"];
+
+interface ChoixVoix {
+  voix: SpeechSynthesisVoice | undefined;
+  /** True when the chosen voice really matches the requested genre (its name is in
+   * the genre list). False means the device has no voice of that genre, so the
+   * caller differentiates by pitch instead. */
+  genreExact: boolean;
+}
 
 /** Pick the most natural available device voice for the language and genre:
  * neural "Natural/Online" voices first, then a genre-matching name, then any
- * voice of the language. Keeps the native fallback as pleasant as the device allows. */
-function choisirVoix(voix: SpeechSynthesisVoice[], lang: string, genre: "homme" | "femme"): SpeechSynthesisVoice | undefined {
+ * voice of the language. Also reports whether the pick truly matches the genre. */
+function choisirVoix(voix: SpeechSynthesisVoice[], lang: string, genre: "homme" | "femme"): ChoixVoix {
   const prefixe = lang.slice(0, 2);
-  const candidates = voix.filter((v) => v.lang.toLowerCase().startsWith(prefixe));
+  let candidates = voix.filter((v) => v.lang.toLowerCase().startsWith(prefixe));
+  // No voice at all for the language: fall back to the whole list so at least
+  // something speaks (pitch will still carry the genre).
+  if (candidates.length === 0) candidates = voix;
   const genreListe = genre === "femme" ? FEMMES : HOMMES;
+  const opposeListe = genre === "femme" ? HOMMES : FEMMES;
+  const estGenre = (v: SpeechSynthesisVoice): boolean => genreListe.some((g) => v.name.toLowerCase().includes(g));
   const score = (v: SpeechSynthesisVoice): number => {
     const n = v.name.toLowerCase();
     let s = 0;
     if (n.includes("natural") || n.includes("neural") || n.includes("online")) s += 4;
-    if (genreListe.some((g) => n.includes(g))) s += 3;
-    if ((genre === "femme" ? HOMMES : FEMMES).some((g) => n.includes(g))) s -= 3;
+    if (estGenre(v)) s += 5;
+    if (opposeListe.some((g) => n.includes(g))) s -= 5;
     if (n.includes("google")) s += 1;
     return s;
   };
-  return [...candidates].sort((a, b) => score(b) - score(a))[0];
+  const meilleure = [...candidates].sort((a, b) => score(b) - score(a))[0];
+  return { voix: meilleure, genreExact: meilleure ? estGenre(meilleure) : false };
 }
 
 /**
@@ -80,6 +97,22 @@ export function EcouterTexte({ texte, token }: Readonly<{ texte: string; token?:
   const [sourceNeurale, setSourceNeurale] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const neuralCache = useRef<Map<string, string>>(new Map());
+  // Device voices load asynchronously: on the first render getVoices() often
+  // returns an incomplete list (sometimes a single female voice), which is why
+  // the male option could fall back to the female voice. We preload them and
+  // refresh on "voiceschanged" so the male voice is found from the first tap.
+  const voixRef = useRef<SpeechSynthesisVoice[]>([]);
+
+  useEffect(() => {
+    if (!supporte) return undefined;
+    const charger = (): void => {
+      const v = window.speechSynthesis.getVoices();
+      if (v.length) voixRef.current = v;
+    };
+    charger();
+    window.speechSynthesis.addEventListener?.("voiceschanged", charger);
+    return () => window.speechSynthesis.removeEventListener?.("voiceschanged", charger);
+  }, [supporte]);
 
   useEffect(() => () => {
     if (supporte) window.speechSynthesis.cancel();
@@ -93,9 +126,16 @@ export function EcouterTexte({ texte, token }: Readonly<{ texte: string; token?:
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(propre);
     u.lang = en ? "en-US" : "fr-FR";
-    const voix = choisirVoix(window.speechSynthesis.getVoices(), u.lang, genre);
+    const dispo = voixRef.current.length ? voixRef.current : window.speechSynthesis.getVoices();
+    const { voix, genreExact } = choisirVoix(dispo, u.lang, genre);
     if (voix) u.voice = voix;
     u.rate = vitesse;
+    // Pitch carries the genre when the device has no matching voice (common on
+    // Windows, where only one French voice is installed): the male option reads
+    // clearly lower, the female option clearly higher, so the two are always
+    // audibly distinct. A genuine male/female voice keeps a natural neutral pitch.
+    if (genreExact) u.pitch = 1;
+    else u.pitch = genre === "homme" ? 0.6 : 1.35;
     u.onend = () => setEtat("arret");
     u.onerror = () => setEtat("arret");
     window.speechSynthesis.speak(u);
