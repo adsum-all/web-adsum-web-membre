@@ -90,7 +90,21 @@ function Detail({ token, id, onBack, onChanged }: { token: string; id: string; o
         </>
       )}
 
-      <InfoRichText texte={data.contenu} />
+      {/* The content itself lives in a clearly framed card, visually distinct from
+          the surrounding metadata, so the member instantly identifies the message. */}
+      <div style={{ background: T.surf, border: `1.5px solid ${T.line}`, borderLeft: `4px solid ${T.b600}`, borderRadius: 14, padding: "14px 16px", margin: "12px 0", boxShadow: "0 6px 18px -12px rgba(20,30,60,.25)" }}>
+        <InfoRichText texte={data.contenu} />
+        {(data.signature || data.signature_url) && (
+          <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px dashed ${T.line}`, textAlign: "right" }}>
+            {data.signature && <div style={{ fontFamily: T.fd, fontWeight: 700, fontSize: 14.5, color: T.ink }}>{data.signature}</div>}
+            {data.signature_url && (
+              <a href={data.signature_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: T.b600, textDecoration: "none", fontWeight: 600 }}>
+                {data.signature_url.replace(/^https?:\/\//, "")}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
 
       {data.document_url && (
         <a href={data.document_url} download={t("info.documentName")} className="tap" style={btnGhost}>

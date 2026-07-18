@@ -564,6 +564,8 @@ export interface InformationMembre {
   contenu: string;
   priorite: InformationPriorite;
   auteur: string | null;
+  signature: string | null;
+  signature_url: string | null;
   requiert_accuse: boolean;
   lecture_vocale_auto: boolean;
   lien_url: string | null;
