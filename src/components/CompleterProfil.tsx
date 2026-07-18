@@ -57,7 +57,7 @@ const FIELD_STEP: Record<string, number> = {
   pays: 1, region: 1, ville: 1, commission_id: 1, groupe: 1, intendance_id: 1, coordination_id: 1,
   rattachement: 1, tribu_id: 1,
   type_membre: 2, fonction_cle: 2, adresse: 2, adresse_complement: 2,
-  situation_matrimoniale: 2, profession: 2, niveau_etudes: 2,
+  situation_matrimoniale: 2, en_cheminement: 2, profession: 2, niveau_etudes: 2,
   photo: 3, piece: 3,
 };
 
@@ -686,11 +686,37 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
 
           <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "18px 2px 2px" }}>{t("completer.secVie")}</p>
           <Field label={t("completer.fSituation")} highlight={hl("situation_matrimoniale")}>
-            <select style={inp("situation_matrimoniale")} value={f.situation_matrimoniale ?? ""} onChange={(e) => set("situation_matrimoniale", e.target.value)}>
+            <select
+              style={inp("situation_matrimoniale")}
+              value={f.situation_matrimoniale ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                set("situation_matrimoniale", v);
+                // The relational "cheminement" question only applies to a single or
+                // in-couple member; leaving those states clears any stored answer.
+                if (v !== "celibataire" && v !== "en_couple") set("en_cheminement", null);
+              }}
+            >
               <option value="">{t("completer.selectPlaceholder")}</option>
               {SITUATIONS.map((s) => <option key={s.value} value={s.value}>{t(s.labelKey)}</option>)}
             </select>
           </Field>
+          {/* Single or in-couple: ask whether they are "en cheminement" (in a
+              relationship progressing toward marriage). Optional; the other person is
+              never asked. Feeds community statistics. */}
+          {(f.situation_matrimoniale === "celibataire" || f.situation_matrimoniale === "en_couple") && (
+            <Field label={t("completer.fCheminement")} highlight={hl("en_cheminement")} info={t("completer.iCheminement")}>
+              <select
+                style={inp("en_cheminement")}
+                value={f.en_cheminement === true ? "oui" : f.en_cheminement === false ? "non" : ""}
+                onChange={(e) => set("en_cheminement", e.target.value === "" ? null : e.target.value === "oui")}
+              >
+                <option value="">{t("completer.selectPlaceholder")}</option>
+                <option value="oui">{t("completer.cheminementOui")}</option>
+                <option value="non">{t("completer.cheminementNon")}</option>
+              </select>
+            </Field>
+          )}
           {/* The kind of marriage only makes sense once the member declares they
               are married; it is one of the fields the backend accepts at
               registration (dot / religious / both / civil). */}

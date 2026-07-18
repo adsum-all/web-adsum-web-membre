@@ -508,6 +508,10 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "completer.fAdresse": { fr: "Adresse (générale)", en: "Address (general)" },
   "completer.fComplement": { fr: "Complément (facultatif)", en: "Additional detail (optional)" },
   "completer.fSituation": { fr: "Situation matrimoniale", en: "Marital status" },
+  "completer.fCheminement": { fr: "En cheminement", en: "In a courtship" },
+  "completer.iCheminement": { fr: "Êtes-vous en cheminement, c'est-à-dire en couple en vue d'un éventuel mariage ? L'identité de l'autre personne n'est jamais demandée.", en: "Are you in a courtship, that is, in a relationship with a view to a possible marriage? The other person's identity is never requested." },
+  "completer.cheminementOui": { fr: "Oui, en cheminement", en: "Yes, in a courtship" },
+  "completer.cheminementNon": { fr: "Non", en: "No" },
   "completer.fProfession": { fr: "Profession", en: "Occupation" },
   "completer.fNiveauEtudes": { fr: "Niveau d'études", en: "Education level" },
 

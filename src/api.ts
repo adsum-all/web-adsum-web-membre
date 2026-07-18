@@ -70,6 +70,8 @@ export interface MembreProfile {
   promotion: string | null;
   situation_matrimoniale: string | null;
   type_mariage: string | null;
+  /** In a relationship progressing toward marriage (single/in-couple only). */
+  en_cheminement: boolean | null;
   profession: string | null;
   niveau_etudes: string | null;
   baptise: boolean | null;
@@ -975,6 +977,7 @@ export interface ProfilFields {
   niveau_etudes?: string;
   situation_matrimoniale?: string;
   type_mariage?: string;
+  en_cheminement?: boolean | null;
   baptise?: boolean;
   confirme?: boolean;
   premiere_communion?: boolean;

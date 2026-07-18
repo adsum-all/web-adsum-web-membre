@@ -31,6 +31,7 @@ const LABELS: Record<string, string> = {
   profession: "completer.fProfession",
   niveau_etudes: "completer.fNiveauEtudes",
   situation_matrimoniale: "completer.fSituation",
+  en_cheminement: "completer.fCheminement",
   type_mariage: "modif.lblTypeMariage",
   type_membre: "modif.lblStatutMembre",
   baptise: "modif.lblBaptise",
@@ -286,7 +287,7 @@ function Field({
   if (field === "genre") return <Select value={value} onChange={onChange} options={GENRES} />;
   if (field === "type_mariage") return <Select value={value} onChange={onChange} options={TYPES_MARIAGE} />;
   if (field === "type_membre") return <Select value={value} onChange={onChange} options={TYPES_MEMBRE} />;
-  if (field === "baptise" || field === "confirme" || field === "premiere_communion" || field === "naissance_annee_visible") {
+  if (field === "baptise" || field === "confirme" || field === "premiere_communion" || field === "naissance_annee_visible" || field === "en_cheminement") {
     return <Select value={value} onChange={onChange} options={OUI_NON} />;
   }
   const kind = REF_KIND[field];

@@ -166,6 +166,8 @@ export function Infos({
     ? (t(MATRIMONIAL[profile.situation_matrimoniale] ?? "") || pretty(profile.situation_matrimoniale))
     : "-";
   const marriage = profile?.type_mariage ? ` (${pretty(profile.type_mariage)})` : "";
+  // Show the relational journey only for the situations it applies to.
+  const cheminement = profile?.en_cheminement === true ? ` · ${t("completer.fCheminement")}` : "";
 
   const adresse = [profile?.adresse, profile?.adresse_complement].filter(Boolean).join(", ");
   const localisation = [profile?.ville, profile?.region, profile?.pays].filter(Boolean).join(", ");
@@ -283,7 +285,7 @@ export function Infos({
       </Group>
 
       <Group title={t("infos.groupVie")}>
-        <Row label={t("infos.rowSituation")} value={matrimonial + marriage} />
+        <Row label={t("infos.rowSituation")} value={matrimonial + marriage + cheminement} />
         <Row label={t("completer.fProfession")} value={profile?.profession ?? "-"} />
         <Row label={t("completer.fNiveauEtudes")} value={profile?.niveau_etudes ?? "-"} last />
       </Group>
