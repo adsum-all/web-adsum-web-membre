@@ -26,6 +26,20 @@ export const STATUTS = [
   { value: "nouveau_engage", key: "profil.statutNouveau" },
   { value: "inspirant", key: "profil.statutInspirant" },
 ];
+// Controlled education-level catalogue (no free typing, so statistics stay clean).
+// Bilingual labels are inline because these values are not keyed in i18n.
+export const NIVEAUX_ETUDES = [
+  { value: "aucun", fr: "Aucun", en: "None" },
+  { value: "primaire", fr: "Primaire", en: "Primary" },
+  { value: "college", fr: "Collège (BEPC)", en: "Middle school" },
+  { value: "lycee", fr: "Lycée (BAC)", en: "High school" },
+  { value: "bac2", fr: "BAC+2 (BTS, DUT)", en: "Two years after high school" },
+  { value: "licence", fr: "Licence (BAC+3)", en: "Bachelor" },
+  { value: "master", fr: "Master (BAC+5)", en: "Master" },
+  { value: "doctorat", fr: "Doctorat", en: "Doctorate" },
+  { value: "professionnelle", fr: "Formation professionnelle", en: "Vocational training" },
+  { value: "autre", fr: "Autre", en: "Other" },
+];
 export const TYPES_MARIAGE = [
   { value: "dot", labelKey: "completer.mariageDot" },
   { value: "religieux", labelKey: "completer.mariageReligieux" },
