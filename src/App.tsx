@@ -10,6 +10,7 @@ import {
   detectFuseau,
   compteurInformations,
   getActionsAttendues,
+  getNotifications,
   getInscription,
   getMembreProfile,
   getPhotoUrl,
@@ -216,6 +217,27 @@ export function App(): JSX.Element {
   const refreshInfoCount = useCallback(() => {
     if (token) void compteurInformations(token).then((r) => setInfoNonLus(r.non_lus)).catch(() => undefined);
   }, [token]);
+
+  // Unread notifications count, for the bell badge. Derived from the list so no new
+  // endpoint is needed; a failure never fabricates a count.
+  const [notifNonLus, setNotifNonLus] = useState(0);
+  const refreshNotifCount = useCallback(() => {
+    if (token) void getNotifications(token).then((list) => setNotifNonLus(list.filter((n) => !n.lu).length)).catch(() => undefined);
+  }, [token]);
+  useEffect(() => {
+    if (!token) {
+      setNotifNonLus(0);
+      return;
+    }
+    refreshNotifCount();
+    const onFocus = (): void => refreshNotifCount();
+    window.addEventListener("focus", onFocus);
+    const timer = window.setInterval(refreshNotifCount, 180000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(timer);
+    };
+  }, [token, refreshNotifCount]);
   useEffect(() => {
     if (!token) {
       setInfoNonLus(0);
@@ -497,10 +519,36 @@ export function App(): JSX.Element {
             <button
               type="button"
               className="bell"
-              aria-label={notifOpen ? t("app.aria.notifsClose") : t("app.title.notifications")}
-              onClick={() => setNotifOpen((v) => !v)}
+              style={{ position: "relative" }}
+              aria-label={
+                notifOpen
+                  ? t("app.aria.notifsClose")
+                  : `${t("app.title.notifications")}${notifNonLus > 0 ? ` (${notifNonLus})` : ""}`
+              }
+              onClick={() => {
+                if (notifOpen) refreshNotifCount();
+                setNotifOpen((v) => !v);
+              }}
             >
-              {notifOpen ? t("common.close") : "◉"}
+              {notifOpen ? (
+                t("common.close")
+              ) : (
+                <span style={{ position: "relative", display: "inline-flex" }}>
+                  <BellIcon />
+                  {notifNonLus > 0 && (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute", top: -6, right: -7, minWidth: 15, height: 15, padding: "0 3px",
+                        borderRadius: 8, background: "#c0392b", color: "#fff", fontSize: 9.5, fontWeight: 700,
+                        lineHeight: "15px", textAlign: "center", boxShadow: "0 0 0 2px var(--adsum-panel, #fff)",
+                      }}
+                    >
+                      {notifNonLus > 9 ? "9+" : notifNonLus}
+                    </span>
+                  )}
+                </span>
+              )}
             </button>
           )}
         </header>
@@ -724,6 +772,17 @@ function InscriptionAttente({
         {t("settings.logout")}
       </button>
     </div>
+  );
+}
+
+/** A clear bell glyph for the notifications control, so members recognise it as
+ * notifications rather than an ambiguous dot. */
+function BellIcon(): JSX.Element {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 8a6 6 0 0 1 12 0c0 6 2 8 2 8H4s2-2 2-8" />
+      <path d="M10.5 20a2 2 0 0 0 3 0" />
+    </svg>
   );
 }
 
