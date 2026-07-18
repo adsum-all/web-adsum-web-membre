@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { type InformationPriorite, confirmerInformation, getInformation, getMesInformations } from "../api.js";
+import { type InformationMembre, type InformationPriorite, type InformationsFeedParams, confirmerInformation, getInformation, getMesInformationsFeed } from "../api.js";
 import { formatDateTime } from "../format.js";
-import { useT } from "../i18n.js";
+import { useLang, useT } from "../i18n.js";
 import { T } from "../proto.js";
 import { useResource } from "../useResource.js";
 import { AudioPlayer } from "./AudioPlayer.js";
@@ -148,37 +148,56 @@ function Detail({ token, id, onBack, onChanged }: { token: string; id: string; o
 const btnGhost = { display: "block", width: "100%", textAlign: "center" as const, height: 44, lineHeight: "44px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surf, color: T.ink, fontWeight: 600, fontSize: 13.5, textDecoration: "none", margin: "6px 0" };
 const btnPrimary = { display: "block", width: "100%", textAlign: "center" as const, height: 46, lineHeight: "46px", borderRadius: 12, border: "none", background: `linear-gradient(180deg,${T.b500},${T.b600})`, color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none", margin: "8px 0" };
 
+const MOIS_INFO = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+const MOIS_INFO_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const LIMIT_INFO = 12;
+
+function moisAnneeInfo(iso: string | null, en: boolean): string {
+  if (!iso) return en ? "Undated" : "Sans date";
+  const d = new Date(iso);
+  return `${((en ? MOIS_INFO_EN : MOIS_INFO)[d.getMonth()] ?? "").toUpperCase()} ${d.getFullYear()}`;
+}
+
+/** Active = pinned still valid, or an urgent priority. These sit at the top under
+ * a dedicated "active" heading, never mixed into the archived months. */
+function estActive(i: InformationMembre, now: number): boolean {
+  const epingle = i.epingle_jusqu ? new Date(i.epingle_jusqu).getTime() > now : false;
+  return epingle || i.priorite === "urgente";
+}
+
 export function Informations({ token, onCountChange }: { token: string; onCountChange?: () => void }): JSX.Element {
   const t = useT();
-  // A revision counter forces a refetch after a read/confirm, since useResource
-  // refetches on a dependency change (it exposes no imperative reload).
+  const en = useLang() === "en";
   const [rev, setRev] = useState(0);
-  const { data, loading, error } = useResource(() => getMesInformations(token), [token, rev]);
-  const reload = (): void => setRev((r) => r + 1);
   const [filtre, setFiltre] = useState<FiltreId>("toutes");
   const [ouvert, setOuvert] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [q, setQ] = useState("");
+  const [panneau, setPanneau] = useState(false);
+  const [mois, setMois] = useState(0);
+  const [annee, setAnnee] = useState(0);
+  const [typeContenu, setTypeContenu] = useState("");
 
-  const nonLues = useMemo(() => (data ?? []).filter((i) => !i.lu).length, [data]);
+  const prioParam = filtre === "importantes" ? "importante" : filtre === "urgentes" ? "urgente" : undefined;
+  const lectureParam = filtre === "non_lues" ? "non_lu" : undefined;
+  const offset = (page - 1) * LIMIT_INFO;
+  const { data, loading, error } = useResource(
+    () => getMesInformationsFeed(token, {
+      priorite: prioParam, lecture: lectureParam, q: q || undefined,
+      mois: mois || undefined, annee: annee || undefined,
+      type_contenu: (typeContenu || undefined) as InformationsFeedParams["type_contenu"],
+      limit: LIMIT_INFO, offset,
+    }),
+    [token, filtre, q, mois, annee, typeContenu, offset, rev],
+  );
+  const reload = (): void => setRev((r) => r + 1);
 
   if (ouvert) {
     return (
-      <Detail
-        token={token}
-        id={ouvert}
-        onBack={() => {
-          setOuvert(null);
-          reload();
-          onCountChange?.();
-        }}
-        onChanged={() => onCountChange?.()}
-      />
+      <Detail token={token} id={ouvert} onBack={() => { setOuvert(null); reload(); onCountChange?.(); }} onChanged={() => onCountChange?.()} />
     );
   }
 
-  if (loading) return <div className="empty"><p>{t("info.loading")}</p></div>;
-  if (error) return <div className="empty"><p>{error}</p></div>;
-
-  const items = data ?? [];
   const now = Date.now();
   const filtres: { id: FiltreId; label: string }[] = [
     { id: "toutes", label: t("info.filterAll") },
@@ -186,65 +205,110 @@ export function Informations({ token, onCountChange }: { token: string; onCountC
     { id: "importantes", label: t("info.filterImportant") },
     { id: "urgentes", label: t("info.filterUrgent") },
   ];
-  const visibles = items.filter((i) => {
-    if (filtre === "non_lues") return !i.lu;
-    if (filtre === "importantes") return i.priorite === "importante";
-    if (filtre === "urgentes") return i.priorite === "urgente";
-    return true;
-  });
+  const items = data?.items ?? [];
+  const actives = items.filter((i) => estActive(i, now));
+  const reste = items.filter((i) => !estActive(i, now));
+  const groupesMois: [string, InformationMembre[]][] = [];
+  for (const i of reste) {
+    const cle = moisAnneeInfo(i.envoye_le ?? i.cree_le, en);
+    const g = groupesMois.find((x) => x[0] === cle);
+    if (g) g[1].push(i); else groupesMois.push([cle, [i]]);
+  }
+  const anneeActuelle = new Date().getFullYear();
+  const annees = [anneeActuelle, anneeActuelle - 1, anneeActuelle - 2, anneeActuelle - 3];
+
+  const petitSelect = { height: 34, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surf, color: T.ink, fontSize: 12.5, padding: "0 8px" } as const;
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 2px 8px" }}>
-        <span className="list-sub">{nonLues > 0 ? t("info.unreadCount").replace("{n}", String(nonLues)) : t("info.allRead")}</span>
-      </div>
-      <div style={{ display: "flex", gap: 7, overflowX: "auto", padding: "0 2px 12px", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ display: "flex", gap: 7, overflowX: "auto", padding: "0 2px 10px", WebkitOverflowScrolling: "touch" }}>
         {filtres.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            className="tap"
-            onClick={() => setFiltre(f.id)}
-            style={{ flex: "0 0 auto", padding: "7px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${filtre === f.id ? T.b600 : T.line}`, background: filtre === f.id ? T.b600 : T.surf, color: filtre === f.id ? "#fff" : T.ink, whiteSpace: "nowrap" }}
-          >
+          <button key={f.id} type="button" className="tap" onClick={() => { setFiltre(f.id); setPage(1); }}
+            style={{ flex: "0 0 auto", padding: "7px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${filtre === f.id ? T.b600 : T.line}`, background: filtre === f.id ? T.b600 : T.surf, color: filtre === f.id ? "#fff" : T.ink, whiteSpace: "nowrap" }}>
             {f.label}
           </button>
         ))}
       </div>
 
-      {visibles.length === 0 ? (
-        <div className="empty">
-          <div className="empty-glyph" aria-hidden="true">{"◎"}</div>
-          <p>{t("info.empty")}</p>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "0 2px 10px" }}>
+        <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder={en ? "Search (title, content, author)" : "Rechercher (titre, contenu, auteur)"}
+          style={{ flex: 1, height: 36, borderRadius: 9, border: `1px solid ${T.line}`, background: T.surf, color: T.ink, fontSize: 13, padding: "0 11px" }} />
+        <button type="button" className="tap" onClick={() => setPanneau((v) => !v)} aria-expanded={panneau}
+          style={{ height: 36, padding: "0 12px", borderRadius: 9, border: `1px solid ${panneau ? T.b600 : T.line}`, background: panneau ? T.tintb : T.surf, color: panneau ? T.b600 : T.ink, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
+          {en ? "Filter" : "Filtrer"}
+        </button>
+      </div>
+
+      {panneau && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "0 2px 12px" }}>
+          <select value={mois} onChange={(e) => { setMois(Number(e.target.value)); setPage(1); }} aria-label={en ? "Month" : "Mois"} style={petitSelect}>
+            <option value={0}>{en ? "Any month" : "Tous les mois"}</option>
+            {MOIS_INFO.map((m, idx) => <option key={m} value={idx + 1}>{(en ? MOIS_INFO_EN : MOIS_INFO)[idx]}</option>)}
+          </select>
+          <select value={annee} onChange={(e) => { setAnnee(Number(e.target.value)); setPage(1); }} aria-label={en ? "Year" : "Année"} style={petitSelect}>
+            <option value={0}>{en ? "Any year" : "Toutes les années"}</option>
+            {annees.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select value={typeContenu} onChange={(e) => { setTypeContenu(e.target.value); setPage(1); }} aria-label={en ? "Content type" : "Type de contenu"} style={petitSelect}>
+            <option value="">{en ? "Any content" : "Tout contenu"}</option>
+            <option value="texte">{en ? "Text" : "Texte"}</option>
+            <option value="audio">{en ? "Audio" : "Audio"}</option>
+            <option value="document">{en ? "Document" : "Document"}</option>
+            <option value="lien">{en ? "Link" : "Lien"}</option>
+          </select>
         </div>
+      )}
+
+      {loading ? (
+        <div className="empty"><p>{t("info.loading")}</p></div>
+      ) : error ? (
+        <div className="empty"><p>{error}</p></div>
+      ) : items.length === 0 ? (
+        <div className="empty"><div className="empty-glyph" aria-hidden="true">{"◎"}</div><p>{t("info.empty")}</p></div>
       ) : (
-        <ul className="list">
-          {visibles.map((i) => {
-            const epingle = i.epingle_jusqu && new Date(i.epingle_jusqu).getTime() > now;
-            return (
-              <li key={i.id} className="list-item row-tap" onClick={() => setOuvert(i.id)} style={{ borderLeft: `3px solid ${prioMeta(i.priorite).fg}`, alignItems: "flex-start" }}>
-                <div className="list-main" style={{ gap: 3 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                    <PrioBadge p={i.priorite} />
-                    {epingle && <span style={{ fontSize: 10, color: T.mut }} aria-label={t("info.pinned")}>{"\u{1F4CC}"}</span>}
-                  </div>
-                  <strong style={{ fontSize: 15 }}>
-                    {i.titre}
-                    {i.audio_url && (
-                      <span aria-label={t("info.hasAudio")} title={t("info.hasAudio")} style={{ marginLeft: 6, fontSize: 12 }}>
-                        {"\u{1F50A}"}
-                      </span>
-                    )}
-                  </strong>
-                  <span className="list-sub">{extrait(texteBrut(i.contenu))}</span>
-                  <span className="list-sub faint">{[i.auteur, formatDateTime(i.envoye_le ?? i.cree_le)].filter(Boolean).join(" · ")}</span>
-                </div>
-                {!i.lu && <span className="dot" aria-label={t("info.unreadAria")} />}
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          {actives.length > 0 && (
+            <section style={{ marginBottom: 10 }}>
+              <h4 style={{ fontSize: 11, fontWeight: 800, color: T.b600, letterSpacing: 0.5, margin: "4px 2px", fontFamily: T.fm }}>{en ? "ACTIVE INFORMATION" : "INFORMATIONS ACTIVES"}</h4>
+              <ul className="list" style={{ margin: 0 }}>{actives.map((i) => <InfoRow key={i.id} i={i} now={now} onOpen={() => setOuvert(i.id)} t={t} />)}</ul>
+            </section>
+          )}
+          {groupesMois.map(([mois2, arr]) => (
+            <section key={mois2} style={{ marginBottom: 10 }}>
+              <h4 style={{ fontSize: 11, fontWeight: 800, color: T.faint, letterSpacing: 0.5, margin: "4px 2px", fontFamily: T.fm }}>{mois2}</h4>
+              <ul className="list" style={{ margin: 0 }}>{arr.map((i) => <InfoRow key={i.id} i={i} now={now} onOpen={() => setOuvert(i.id)} t={t} />)}</ul>
+            </section>
+          ))}
+          {(data?.pages ?? 1) > 1 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 12 }}>
+              <button type="button" className="tap" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} style={{ height: 36, padding: "0 12px", borderRadius: 9, border: `1px solid ${T.line}`, background: T.surf, color: page <= 1 ? T.faint : T.ink, fontSize: 12.5, fontWeight: 600 }}>{en ? "Previous" : "Précédent"}</button>
+              <span style={{ fontSize: 11.5, color: T.mut, fontFamily: T.fm }}>{en ? `Page ${data?.page} of ${data?.pages}` : `Page ${data?.page} sur ${data?.pages}`} · {data?.total}</span>
+              <button type="button" className="tap" disabled={page >= (data?.pages ?? 1)} onClick={() => setPage((p) => p + 1)} style={{ height: 36, padding: "0 12px", borderRadius: 9, border: `1px solid ${T.line}`, background: T.surf, color: page >= (data?.pages ?? 1) ? T.faint : T.ink, fontSize: 12.5, fontWeight: 600 }}>{en ? "Next" : "Suivant"}</button>
+            </div>
+          )}
+        </>
       )}
     </>
+  );
+}
+
+function InfoRow({ i, now, onOpen, t }: Readonly<{ i: InformationMembre; now: number; onOpen: () => void; t: (k: string) => string }>): JSX.Element {
+  const epingle = i.epingle_jusqu && new Date(i.epingle_jusqu).getTime() > now;
+  return (
+    <li className="list-item row-tap" onClick={onOpen} style={{ borderLeft: `3px solid ${prioMeta(i.priorite).fg}`, alignItems: "flex-start" }}>
+      <div className="list-main" style={{ gap: 3 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <PrioBadge p={i.priorite} />
+          {epingle && <span style={{ fontSize: 10, color: T.mut }} aria-label={t("info.pinned")}>{"\u{1F4CC}"}</span>}
+        </div>
+        <strong style={{ fontSize: 15 }}>
+          {i.titre}
+          {i.audio_url && <span aria-label={t("info.hasAudio")} title={t("info.hasAudio")} style={{ marginLeft: 6, fontSize: 12 }}>{"\u{1F50A}"}</span>}
+        </strong>
+        <span className="list-sub">{extrait(texteBrut(i.contenu))}</span>
+        <span className="list-sub faint">{[i.auteur, formatDateTime(i.envoye_le ?? i.cree_le)].filter(Boolean).join(" · ")}</span>
+      </div>
+      {!i.lu && <span className="dot" aria-label={t("info.unreadAria")} />}
+    </li>
   );
 }
