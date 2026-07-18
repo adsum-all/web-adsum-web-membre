@@ -67,6 +67,7 @@ export function initialFields(p: MembreProfile | null): ProfilFields {
     groupe: p?.groupe ?? "",
     situation_matrimoniale: p?.situation_matrimoniale ?? "",
     type_mariage: p?.type_mariage ?? "",
+    en_cheminement: p?.en_cheminement ?? null,
     code_membre: p?.code_membre ?? "",
     date_entree: p?.date_entree ?? "",
     promotion: p?.promotion ?? "",
