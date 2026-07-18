@@ -554,6 +554,51 @@ export function getMembreProfile(token: string): Promise<MembreProfile> {
   return authedGet<MembreProfile>("/api/v1/membres/me", token, apiMsg("Profil indisponible", "Profile unavailable"));
 }
 
+export type InformationPriorite = "normale" | "importante" | "urgente";
+
+/** An institutional Information as seen by a member, with their own read/confirm state. */
+export interface InformationMembre {
+  id: string;
+  titre: string;
+  sous_titre: string | null;
+  contenu: string;
+  priorite: InformationPriorite;
+  auteur: string | null;
+  requiert_accuse: boolean;
+  lecture_vocale_auto: boolean;
+  lien_url: string | null;
+  action_label: string | null;
+  action_url: string | null;
+  audio_url: string | null;
+  image_url: string | null;
+  document_url: string | null;
+  expire_le: string | null;
+  epingle_jusqu: string | null;
+  cree_le: string | null;
+  envoye_le: string | null;
+  lu: boolean;
+  confirme: boolean;
+  lu_le?: string | null;
+  confirme_le?: string | null;
+}
+
+export function getMesInformations(token: string): Promise<InformationMembre[]> {
+  return authedGet<InformationMembre[]>("/api/v1/membres/me/informations", token, apiMsg("Informations indisponibles", "Information unavailable"));
+}
+
+/** Fetching the detail records the read server side (never a list view or a push). */
+export function getInformation(token: string, id: string): Promise<InformationMembre> {
+  return authedGet<InformationMembre>(`/api/v1/membres/me/informations/${id}`, token, apiMsg("Information indisponible", "Information unavailable"));
+}
+
+export function compteurInformations(token: string): Promise<{ non_lus: number }> {
+  return authedGet<{ non_lus: number }>("/api/v1/membres/me/informations/compteur", token, apiMsg("Compteur indisponible", "Counter unavailable"));
+}
+
+export function confirmerInformation(token: string, id: string): Promise<{ ok: boolean; confirme_le: string | null }> {
+  return authedPost<{ ok: boolean; confirme_le: string | null }>(`/api/v1/membres/me/informations/${id}/confirmer`, token, {}, apiMsg("Confirmation impossible", "Confirmation failed"));
+}
+
 export interface MembreConsultation {
   id: string;
   titre: string;

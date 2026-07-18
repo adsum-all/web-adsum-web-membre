@@ -1,6 +1,6 @@
 import { useT } from "../i18n.js";
 
-export type TabId = "carte" | "activites" | "calendrier" | "historique" | "profil";
+export type TabId = "carte" | "activites" | "calendrier" | "informations" | "profil";
 
 /** Crisp inline SVG icons (24px grid, 1.8 stroke) for a professional tab bar. */
 function TabIcon({ id }: { id: TabId }): JSX.Element {
@@ -37,12 +37,13 @@ function TabIcon({ id }: { id: TabId }): JSX.Element {
           <path d="M8 3v4M16 3v4M3 10h18" />
         </svg>
       );
-    case "historique":
+    case "informations":
+      // Megaphone: an institutional broadcast, distinct from a bell notification.
       return (
         <svg {...common}>
-          <path d="M4 12a8 8 0 1 0 2.3-5.6" />
-          <path d="M4 4v4h4" />
-          <path d="M12 8v4l3 2" />
+          <path d="M3 11v2a1 1 0 0 0 1 1h3l6 4V6L7 10H4a1 1 0 0 0-1 1Z" />
+          <path d="M17 9a4 4 0 0 1 0 6" />
+          <path d="M7 14v3a2 2 0 0 0 4 0v-1.5" />
         </svg>
       );
     case "profil":
@@ -55,7 +56,12 @@ function TabIcon({ id }: { id: TabId }): JSX.Element {
   }
 }
 
-const TABS: TabId[] = ["carte", "activites", "calendrier", "historique", "profil"];
+const TABS: TabId[] = ["carte", "activites", "calendrier", "informations", "profil"];
+
+/** Cap the badge so it never shows an overwhelming number: exact up to 9, then 9+. */
+function badgeText(n: number): string {
+  return n > 9 ? "9+" : String(n);
+}
 
 interface TabBarProps {
   active: TabId;
@@ -63,14 +69,18 @@ interface TabBarProps {
   /** Count of pending member actions, shown as a discreet dot on the Profil tab so
    * the signal stays visible even when the member is on another tab. */
   profilBadge?: number;
+  /** Count of unread Informations, shown on the Informations tab. */
+  infoBadge?: number;
 }
 
-export function TabBar({ active, onChange, profilBadge = 0 }: TabBarProps): JSX.Element {
+export function TabBar({ active, onChange, profilBadge = 0, infoBadge = 0 }: TabBarProps): JSX.Element {
   const t = useT();
   return (
     <nav className="tabbar" aria-label="Navigation">
       {TABS.map((id) => {
-        const badge = id === "profil" ? profilBadge : 0;
+        let badge = 0;
+        if (id === "profil") badge = profilBadge;
+        else if (id === "informations") badge = infoBadge;
         return (
           <button
             key={id}
@@ -83,7 +93,11 @@ export function TabBar({ active, onChange, profilBadge = 0 }: TabBarProps): JSX.
               <TabIcon id={id} />
               {badge > 0 && (
                 <span
-                  aria-label={`${badge} action${badge > 1 ? "s" : ""} en attente`}
+                  aria-label={
+                    id === "informations"
+                      ? `${badge} information${badge > 1 ? "s" : ""} non lue${badge > 1 ? "s" : ""}`
+                      : `${badge} action${badge > 1 ? "s" : ""} en attente`
+                  }
                   style={{
                     position: "absolute",
                     top: -4,
@@ -101,7 +115,7 @@ export function TabBar({ active, onChange, profilBadge = 0 }: TabBarProps): JSX.
                     boxShadow: "0 0 0 2px var(--adsum-panel, #fff)",
                   }}
                 >
-                  {badge}
+                  {badgeText(badge)}
                 </span>
               )}
             </span>
