@@ -8,6 +8,7 @@ import {
   type MembreProfile,
   type PresenceOut,
   detectFuseau,
+  compteurInformations,
   getActionsAttendues,
   getInscription,
   getMembreProfile,
@@ -32,6 +33,7 @@ import { Demandes } from "./components/Demandes.js";
 import { Engage } from "./components/Engage.js";
 import { Forgot } from "./components/Forgot.js";
 import { Historique } from "./components/Historique.js";
+import { Informations } from "./components/Informations.js";
 import { Identite } from "./components/Identite.js";
 import { Infos } from "./components/Infos.js";
 import { type AuthContext, Login } from "./components/Login.js";
@@ -207,6 +209,27 @@ export function App(): JSX.Element {
   const refreshActions = useCallback(() => {
     if (token) void getActionsAttendues(token).then(setActions).catch(() => undefined);
   }, [token]);
+
+  // Unread Informations count, for the badge on the Informations tab. Refreshed the
+  // same way as the action summary; a failure never fabricates a count.
+  const [infoNonLus, setInfoNonLus] = useState(0);
+  const refreshInfoCount = useCallback(() => {
+    if (token) void compteurInformations(token).then((r) => setInfoNonLus(r.non_lus)).catch(() => undefined);
+  }, [token]);
+  useEffect(() => {
+    if (!token) {
+      setInfoNonLus(0);
+      return;
+    }
+    refreshInfoCount();
+    const onFocus = (): void => refreshInfoCount();
+    window.addEventListener("focus", onFocus);
+    const timer = window.setInterval(refreshInfoCount, 180000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(timer);
+    };
+  }, [token, refreshInfoCount]);
 
   // Keep the reminder honest without polling hard: load it on sign-in, refresh it
   // when the member returns to the app (a request may have moved server-side), and
@@ -547,13 +570,31 @@ export function App(): JSX.Element {
             )}
             {tab === "carte" && <Carte token={token} profile={profile} />}
             {tab === "activites" && (
-              <Activites
-                token={token}
-                onJoin={(ev) => {
-                  setActiveEvent(ev);
-                  setView("session");
-                }}
-              />
+              <>
+                <Activites
+                  token={token}
+                  onJoin={(ev) => {
+                    setActiveEvent(ev);
+                    setView("session");
+                  }}
+                />
+                {/* Past activities live at the bottom of the Activités tab, folded by
+                    default, so they no longer clutter the upcoming list. */}
+                <details style={{ marginTop: 16 }}>
+                  <summary style={{ cursor: "pointer", padding: "8px 2px", fontSize: 13, fontWeight: 700, color: "var(--adsum-mut, #6b7280)" }}>
+                    {t("hist.sectionTitle")}
+                  </summary>
+                  <div style={{ marginTop: 8 }}>
+                    <Historique
+                      token={token}
+                      onSelect={(p) => {
+                        setDetailItem(p);
+                        setView("detail");
+                      }}
+                    />
+                  </div>
+                </details>
+              </>
             )}
             {tab === "calendrier" && (
               <Calendrier
@@ -564,14 +605,8 @@ export function App(): JSX.Element {
                 }}
               />
             )}
-            {tab === "historique" && (
-              <Historique
-                token={token}
-                onSelect={(p) => {
-                  setDetailItem(p);
-                  setView("detail");
-                }}
-              />
+            {tab === "informations" && (
+              <Informations token={token} onCountChange={refreshInfoCount} />
             )}
             {tab === "profil" && (
               <Profil
@@ -597,6 +632,7 @@ export function App(): JSX.Element {
         <TabBar
           active={tab}
           profilBadge={actions?.total ?? 0}
+          infoBadge={infoNonLus}
           onChange={(t) => {
             setNotifOpen(false);
             setRecensementOpen(false);
@@ -605,6 +641,7 @@ export function App(): JSX.Element {
             setActiveEvent(null);
             setTab(t);
             refreshActions();
+            refreshInfoCount();
           }}
         />
       )}
@@ -691,7 +728,7 @@ function InscriptionAttente({
 }
 
 function tabTitle(tab: TabId, t: (key: string) => string): string {
-  return { carte: t("nav.carte"), activites: t("nav.activites"), calendrier: t("nav.calendrier"), historique: t("nav.historique"), profil: t("nav.profil") }[tab];
+  return { carte: t("nav.carte"), activites: t("nav.activites"), calendrier: t("nav.calendrier"), informations: t("nav.informations"), profil: t("nav.profil") }[tab];
 }
 
 function NavRow({
