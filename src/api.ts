@@ -47,6 +47,7 @@ export interface MembreProfile {
   categorie_principale: string;
   telephone: string | null;
   indicatif_telephone: string | null;
+  whatsapp_numero: string | null;
   groupe: string | null;
   photo_url: string | null;
   photo_pending: boolean;
@@ -597,6 +598,24 @@ export function getFonctions(token: string): Promise<FonctionItem[]> {
   return authedGet<FonctionItem[]>("/api/v1/fonctions", token, apiMsg("Fonctions indisponibles", "Functions unavailable"));
 }
 
+export interface UniteHierarchie {
+  nom: string | null;
+  responsable: string | null;
+  fonction: string;
+}
+
+export interface MaHierarchie {
+  commission: UniteHierarchie | null;
+  coordination: UniteHierarchie | null;
+  intendance: UniteHierarchie | null;
+  tribu: { nom: string | null; patriarche: string | null } | null;
+  chaine_fonctionnelle: { fonction: string; titulaire: string | null }[];
+}
+
+export function getMaHierarchie(token: string): Promise<MaHierarchie> {
+  return authedGet<MaHierarchie>("/api/v1/membres/me/hierarchie", token, apiMsg("Hiérarchie indisponible", "Hierarchy unavailable"));
+}
+
 export function getAnniversaires(
   token: string,
   params: { categorie: AnniversaireCategorie; mois?: number },
@@ -969,6 +988,12 @@ export interface ProfilFields {
   // Four-block registration declarations (special functions, functions, particular
   // functions) with an optional scope. The consecration title uses berger_declare.
   fonctions_souhaitees?: { cle: string; perimetre?: string | null }[];
+  // Civil identity completeness (mostly for married women) and extra preferences.
+  nom_naissance?: string;
+  nom_marital?: string;
+  nom_affiche?: string;
+  whatsapp_numero?: string;
+  anniversaire_visible_annuaire?: boolean;
 }
 
 async function authedPatch<T>(path: string, token: string, body: unknown, onError: string): Promise<T> {
