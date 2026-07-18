@@ -20,13 +20,14 @@ import {
   uploadDocument,
   uploadPhoto,
 } from "../api.js";
-import { useT } from "../i18n.js";
+import { useLang, useT } from "../i18n.js";
 import { capitaliserPrenoms, nomMajuscule, uniteLabel } from "../name.js";
 import { T, gradient } from "../proto.js";
 import {
   DOC_TYPES,
   Field,
   GENRES,
+  NIVEAUX_ETUDES,
   RecapRow,
   SITUATIONS,
   SacrementCheck,
@@ -125,6 +126,7 @@ function fusionnerProfil(base: ProfilFields, saisi: ProfilFields): ProfilFields 
 
 export function CompleterProfil({ token, profile, statut, motif, champsACorriger = [], onSubmitted }: Props): JSX.Element {
   const t = useT();
+  const enLangue = useLang() === "en";
   const correction = statut === "modification_demandee";
   const flagged = useMemo(() => new Set(champsACorriger), [champsACorriger]);
   const hl = (name: string): boolean => correction && flagged.has(name);
@@ -766,7 +768,12 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
             </>
           )}
           <Field label={t("completer.fProfession")} highlight={hl("profession")}><input style={inp("profession")} value={f.profession} onChange={(e) => set("profession", e.target.value)} /></Field>
-          <Field label={t("completer.fNiveauEtudes")} highlight={hl("niveau_etudes")}><input style={inp("niveau_etudes")} value={f.niveau_etudes} onChange={(e) => set("niveau_etudes", e.target.value)} /></Field>
+          <Field label={t("completer.fNiveauEtudes")} highlight={hl("niveau_etudes")}>
+            <select style={inp("niveau_etudes")} value={f.niveau_etudes} onChange={(e) => set("niveau_etudes", e.target.value)}>
+              <option value="">{t("completer.selectPlaceholder")}</option>
+              {NIVEAUX_ETUDES.map((n) => <option key={n.value} value={n.value}>{enLangue ? n.en : n.fr}</option>)}
+            </select>
+          </Field>
 
           {/* Sacramental life: legitimate member-declarable data for the community,
               already accepted by the registration backend. Optional checkboxes so
