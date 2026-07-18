@@ -509,6 +509,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
         <>
           <TelegramInvite token={token} />
           <Field label={t("completer.fNom")} required highlight={hl("nom")} info={t("completer.iNom")}><input style={inp("nom")} value={f.nom} onChange={(e) => set("nom", nomMajuscule(e.target.value))} placeholder={t("completer.phNom")} /></Field>
+          <Field label={t("completer.fNomNaissance")} highlight={hl("nom_naissance")} info={t("completer.iNomNaissance")}><input style={inp("nom_naissance")} value={f.nom_naissance ?? ""} onChange={(e) => set("nom_naissance", nomMajuscule(e.target.value))} placeholder={t("completer.phNomNaissance")} /></Field>
           <Field label={t("completer.fPremierPrenom")} required highlight={hl("prenoms")} info={t("completer.iPremierPrenom")}><input style={inp("prenoms")} value={premierPrenom} onChange={(e) => majPremier(e.target.value)} onBlur={capitaliserPrenomsChamps} placeholder={t("completer.phPremierPrenom")} /></Field>
           <Field label={t("completer.fAutresPrenoms")} info={t("completer.iAutresPrenoms")}><input style={baseInp} value={autresPrenoms} onChange={(e) => majAutres(e.target.value)} onBlur={capitaliserPrenomsChamps} placeholder={t("completer.phAutresPrenoms")} /></Field>
           <Field label={t("completer.fGenre")} required highlight={hl("genre")}>
@@ -522,6 +523,10 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
             <input type="checkbox" checked={!!f.naissance_annee_visible} onChange={(e) => set("naissance_annee_visible", e.target.checked)} style={{ width: 17, height: 17, accentColor: T.b600 }} />
             {t("completer.anneeVisible")}
           </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "2px 2px 4px", fontSize: 12, color: T.mut }}>
+            <input type="checkbox" checked={f.anniversaire_visible_annuaire !== false} onChange={(e) => set("anniversaire_visible_annuaire", e.target.checked)} style={{ width: 17, height: 17, accentColor: T.b600 }} />
+            {t("completer.anniversaireVisible")}
+          </label>
           <Field label={t("completer.fTelephone")} required highlight={hl("telephone")} info={t("completer.iTelephone")}>
             <PhoneField
               indicatif={f.indicatif_telephone ?? ""}
@@ -530,6 +535,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
               onNumero={(n) => set("telephone", n)}
             />
           </Field>
+          <Field label={t("completer.fWhatsapp")} highlight={hl("whatsapp_numero")} info={t("completer.iWhatsapp")}><input style={inp("whatsapp_numero")} value={f.whatsapp_numero ?? ""} onChange={(e) => set("whatsapp_numero", e.target.value)} placeholder={t("completer.phWhatsapp")} inputMode="tel" /></Field>
         </>
       )}
 
@@ -689,12 +695,24 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
               are married; it is one of the fields the backend accepts at
               registration (dot / religious / both / civil). */}
           {f.situation_matrimoniale === "marie" && (
-            <Field label={t("completer.fTypeMariage")} highlight={hl("type_mariage")}>
-              <select style={inp("type_mariage")} value={f.type_mariage ?? ""} onChange={(e) => set("type_mariage", e.target.value)}>
-                <option value="">{t("completer.selectPlaceholder")}</option>
-                {TYPES_MARIAGE.map((m) => <option key={m.value} value={m.value}>{t(m.labelKey)}</option>)}
-              </select>
-            </Field>
+            <>
+              <Field label={t("completer.fTypeMariage")} highlight={hl("type_mariage")}>
+                <select style={inp("type_mariage")} value={f.type_mariage ?? ""} onChange={(e) => set("type_mariage", e.target.value)}>
+                  <option value="">{t("completer.selectPlaceholder")}</option>
+                  {TYPES_MARIAGE.map((m) => <option key={m.value} value={m.value}>{t(m.labelKey)}</option>)}
+                </select>
+              </Field>
+              {/* Married name and which family name is displayed: lets a married woman
+                  keep her maiden name on record and choose the shown one. */}
+              <Field label={t("completer.fNomMarital")} highlight={hl("nom_marital")} info={t("completer.iNomMarital")}><input style={inp("nom_marital")} value={f.nom_marital ?? ""} onChange={(e) => set("nom_marital", nomMajuscule(e.target.value))} placeholder={t("completer.phNomMarital")} /></Field>
+              <Field label={t("completer.fNomAffiche")} highlight={hl("nom_affiche")} info={t("completer.iNomAffiche")}>
+                <select style={inp("nom_affiche")} value={f.nom_affiche ?? ""} onChange={(e) => set("nom_affiche", e.target.value)}>
+                  <option value="">{t("completer.nomAfficheDefaut")}</option>
+                  <option value="naissance">{t("completer.nomAfficheNaissance")}</option>
+                  <option value="marital">{t("completer.nomAfficheMarital")}</option>
+                </select>
+              </Field>
+            </>
           )}
           <Field label={t("completer.fProfession")} highlight={hl("profession")}><input style={inp("profession")} value={f.profession} onChange={(e) => set("profession", e.target.value)} /></Field>
           <Field label={t("completer.fNiveauEtudes")} highlight={hl("niveau_etudes")}><input style={inp("niveau_etudes")} value={f.niveau_etudes} onChange={(e) => set("niveau_etudes", e.target.value)} /></Field>

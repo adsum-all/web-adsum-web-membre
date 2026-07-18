@@ -40,6 +40,7 @@ import { Notifications } from "./components/Notifications.js";
 import { Recensement } from "./components/Recensement.js";
 import { Secu } from "./components/Secu.js";
 import { Session } from "./components/Session.js";
+import { MaHierarchie } from "./components/MaHierarchie.js";
 import { MesApplications } from "./components/MesApplications.js";
 import { Settings } from "./components/Settings.js";
 import { Suivi } from "./components/Suivi.js";
@@ -58,7 +59,8 @@ type ViewId =
   | "infos"
   | "demandes"
   | "consultations"
-  | "mesApplications";
+  | "mesApplications"
+  | "hierarchie";
 
 /** i18n key of each screen title, resolved through the translator at render. */
 const VIEW_TITLES: Record<ViewId, string> = {
@@ -75,6 +77,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   demandes: "profilNav.demandes.title",
   consultations: "profilNav.consultations.title",
   mesApplications: "profilNav.apps.title",
+  hierarchie: "profilNav.hierarchie.title",
 };
 
 const HIDE_CHROME: ViewId[] = ["session", "sent"];
@@ -500,6 +503,8 @@ export function App(): JSX.Element {
           <Consultations token={token} />
         ) : view === "mesApplications" ? (
           <MesApplications token={token} />
+        ) : view === "hierarchie" ? (
+          <MaHierarchie token={token} />
         ) : view === "secu" ? (
           <Secu token={token} onSettings={() => setView("settings")} />
         ) : view === "session" && activeEvent ? (
@@ -581,6 +586,7 @@ export function App(): JSX.Element {
                 onDemandes={() => openDemandes(null)}
                 onConsultations={() => setView("consultations")}
                 onMesApplications={() => setView("mesApplications")}
+                onHierarchie={() => setView("hierarchie")}
                 demandesBadge={actions?.total ?? 0}
               />
             )}
@@ -777,6 +783,7 @@ function Profil({
   onDemandes,
   onConsultations,
   onMesApplications,
+  onHierarchie,
   demandesBadge = 0,
 }: {
   token: string;
@@ -790,6 +797,7 @@ function Profil({
   onDemandes: () => void;
   onConsultations: () => void;
   onMesApplications: () => void;
+  onHierarchie: () => void;
   demandesBadge?: number;
 }): JSX.Element {
   const t = useT();
@@ -884,6 +892,7 @@ function Profil({
       <NavRow glyph="🗳" title={t("profilNav.consultations.title")} subtitle={t("profilNav.consultations.sub")} onClick={onConsultations} />
       <NavRow glyph="🗎" title={t("profilNav.dossier.title")} subtitle={t("profilNav.dossier.sub")} onClick={onDossier} />
       <NavRow glyph="▦" title={t("profilNav.apps.title")} subtitle={t("profilNav.apps.sub")} onClick={onMesApplications} />
+      <NavRow glyph="⋔" title={t("profilNav.hierarchie.title")} subtitle={t("profilNav.hierarchie.desc")} onClick={onHierarchie} />
       <NavRow glyph="🔒" title={t("profilNav.secu.title")} subtitle={t("profilNav.secu.sub")} onClick={onSecu} />
       <NavRow glyph="⚙" title={t("profilNav.settings.title")} subtitle={t("profilNav.settings.sub")} onClick={onSettings} />
       <NavRow glyph="↻" title={t("profilNav.recensement.title")} subtitle={t("profilNav.recensement.sub")} onClick={onRecensement} />

@@ -84,6 +84,11 @@ export function initialFields(p: MembreProfile | null): ProfilFields {
     fonctions_souhaitees: (p?.fonctions ?? [])
       .filter((fn) => fn.cle && fn.categorie !== "titre")
       .map((fn) => ({ cle: String(fn.cle), perimetre: fn.perimetre ?? "" })),
+    nom_naissance: p?.nom_naissance ?? "",
+    nom_marital: p?.nom_marital ?? "",
+    nom_affiche: p?.nom_affiche ?? "",
+    whatsapp_numero: p?.whatsapp_numero ?? "",
+    anniversaire_visible_annuaire: p?.anniversaire_visible_annuaire ?? true,
   };
 }
 
