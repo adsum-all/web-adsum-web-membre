@@ -81,7 +81,7 @@ function Detail({ token, id, onBack, onChanged }: { token: string; id: string; o
         <img src={data.image_url} alt="" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 13, border: `1px solid ${T.line}`, margin: "4px 0 8px" }} />
       )}
 
-      {data.lecture_vocale_auto && <EcouterTexte texte={`${data.titre}. ${data.sous_titre ?? ""}. ${texteBrut(data.contenu)}`} />}
+      {data.lecture_vocale_auto && <EcouterTexte token={token} texte={`${data.titre}. ${data.sous_titre ?? ""}. ${texteBrut(data.contenu)}`} />}
 
       {data.audio_url && (
         <>

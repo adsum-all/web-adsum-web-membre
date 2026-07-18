@@ -599,6 +599,12 @@ export function confirmerInformation(token: string, id: string): Promise<{ ok: b
   return authedPost<{ ok: boolean; confirme_le: string | null }>(`/api/v1/membres/me/informations/${id}/confirmer`, token, {}, apiMsg("Confirmation impossible", "Confirmation failed"));
 }
 
+/** Server-side neural reading of a content (cached). 503 when no TTS provider is
+ * configured in Réglages IA; the caller then falls back to the device voice. */
+export function synthetiserTexte(token: string, texte: string, genre: "homme" | "femme"): Promise<{ mime: string; audio: string; cache: boolean }> {
+  return authedPost<{ mime: string; audio: string; cache: boolean }>("/api/v1/membres/me/tts", token, { texte, genre }, apiMsg("Synthèse vocale indisponible", "Voice synthesis unavailable"));
+}
+
 export interface MembreConsultation {
   id: string;
   titre: string;
