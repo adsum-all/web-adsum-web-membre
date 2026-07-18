@@ -562,6 +562,27 @@ const DICT: Record<string, { fr: string; en: string }> = {
     fr: "Votre déclaration de berger / bergère sera vérifiée puis confirmée par l'administration.",
     en: "Your shepherd declaration will be reviewed and confirmed by the administration.",
   },
+  "completer.blocTitre": { fr: "Titre de consécration", en: "Consecration title" },
+  "completer.blocFonctionSpeciale": { fr: "Fonctions spéciales", en: "Special functions" },
+  "completer.noteFonctionSpeciale": {
+    fr: "Gouvernance de très haut niveau (Fondateur, Modérateur, Berger des missions). Sélectionnez si cela vous concerne.",
+    en: "Top-level governance (Founder, Moderator, Mission shepherd). Select if it applies to you.",
+  },
+  "completer.blocFonction": { fr: "Fonctions", en: "Functions" },
+  "completer.noteFonction": {
+    fr: "Responsabilités opérationnelles (Intendant, Coordinateur, Responsable...). Vous pouvez en sélectionner plusieurs et préciser le périmètre.",
+    en: "Operational responsibilities (Steward, Coordinator, Officer...). You may select several and give the scope.",
+  },
+  "completer.blocFonctionParticuliere": { fr: "Fonctions particulières", en: "Particular functions" },
+  "completer.noteFonctionParticuliere": {
+    fr: "Rôles transversaux (Patriarche et rôles d'accompagnement). Sélectionnez et précisez le périmètre si besoin.",
+    en: "Transversal roles (Patriarch and support roles). Select and give the scope if needed.",
+  },
+  "completer.phPerimetre": { fr: "Périmètre (ex. Commission EDEN, Tribu de Juda)", en: "Scope (e.g. EDEN Commission, Tribe of Judah)" },
+  "completer.fonctionsAttente": {
+    fr: "Vos fonctions déclarées seront vérifiées puis confirmées par l'administration.",
+    en: "Your declared functions will be reviewed and confirmed by the administration.",
+  },
   "completer.fTypeMariage": { fr: "Type de mariage", en: "Type of marriage" },
   "completer.mariageDot": { fr: "Dotal (coutumier)", en: "Dowry (customary)" },
   "completer.mariageReligieux": { fr: "Religieux", en: "Religious" },

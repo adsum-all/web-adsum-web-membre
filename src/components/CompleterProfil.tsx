@@ -4,6 +4,7 @@ import {
   ApiError,
   type DocumentItem,
   type FonctionItem,
+  type CategorieAttribution,
   type MembreProfile,
   type NiveauItem,
   type ProfilFields,
@@ -223,6 +224,67 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
   }
   function inp(name: string): React.CSSProperties {
     return hl(name) ? { ...baseInp, border: `1px solid ${T.warn}` } : baseInp;
+  }
+
+  // Attribution declarations (special functions, functions, particular functions):
+  // multi-select, each mapped to a fonctions_souhaitees entry with optional scope.
+  // The catalogue is filtered strictly by category, so a title never appears in a
+  // function block and no category leaks into another.
+  const parCategorie = (c: CategorieAttribution): FonctionItem[] => fonctions.filter((fn) => fn.categorie === c);
+  const labelFonction = (fn: FonctionItem): string =>
+    f.genre === "femme" ? (fn.libelle_f || fn.libelle_n) : f.genre === "homme" ? (fn.libelle_h || fn.libelle_n) : (fn.libelle_n || fn.libelle_h);
+  const souhaitees = f.fonctions_souhaitees ?? [];
+  const estSelectionnee = (cle: string): boolean => souhaitees.some((x) => x.cle === cle);
+  const basculerFonction = (cle: string): void =>
+    set("fonctions_souhaitees", estSelectionnee(cle) ? souhaitees.filter((x) => x.cle !== cle) : [...souhaitees, { cle, perimetre: "" }]);
+  const definirPerimetre = (cle: string, v: string): void =>
+    set("fonctions_souhaitees", souhaitees.map((x) => (x.cle === cle ? { ...x, perimetre: v } : x)));
+  const perimetreDe = (cle: string): string => souhaitees.find((x) => x.cle === cle)?.perimetre ?? "";
+
+  function BlocFonctions({ categorie, note, avecPerimetre }: { categorie: CategorieAttribution; note: string; avecPerimetre: boolean }): JSX.Element | null {
+    const items = parCategorie(categorie);
+    if (items.length === 0) return null;
+    return (
+      <div style={{ margin: "4px 2px 12px" }}>
+        <p style={{ fontSize: 11, color: T.mut, lineHeight: 1.5, margin: "2px 0 8px" }}>{note}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {items.map((fn) => {
+            const sel = estSelectionnee(fn.cle);
+            return (
+              <div key={fn.cle}>
+                <button
+                  type="button"
+                  className="tap"
+                  onClick={() => basculerFonction(fn.cle)}
+                  aria-pressed={sel}
+                  style={{
+                    width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit", fontSize: 14,
+                    padding: "11px 13px", borderRadius: 11, fontWeight: sel ? 600 : 500,
+                    border: `1.5px solid ${sel ? T.b600 : T.line}`,
+                    background: sel ? T.tintb : "transparent", color: sel ? T.tintbf : T.ink,
+                    display: "flex", alignItems: "center", gap: 10,
+                  }}
+                >
+                  <span aria-hidden style={{
+                    width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                    border: `1.5px solid ${sel ? T.b600 : T.faint}`, background: sel ? T.b600 : "transparent",
+                  }} />
+                  {labelFonction(fn)}
+                </button>
+                {sel && avecPerimetre && (
+                  <input
+                    style={{ ...baseInp, marginTop: 6 }}
+                    value={perimetreDe(fn.cle)}
+                    onChange={(e) => definirPerimetre(fn.cle, e.target.value)}
+                    placeholder={t("completer.phPerimetre")}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   }
 
   // The active axis: an explicit choice wins; otherwise it is inferred from the
@@ -553,15 +615,10 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
               confirmed by the administration, never self-granted. */}
           <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "18px 2px 2px" }}>{t("completer.secTitres")}</p>
           <p style={{ fontSize: 11, color: T.mut, lineHeight: 1.5, margin: "2px 2px 8px" }}>{t("completer.titresNote")}</p>
-          <Field label={t("profil.fonction")} highlight={hl("fonction_cle")} info={t("profil.fonctionInfo")}>
-            <select style={inp("fonction_cle")} value={f.fonction_cle ?? ""} onChange={(e) => set("fonction_cle", e.target.value)}>
-              <option value="">{t("profil.fonctionAucune")}</option>
-              {fonctions.map((fn) => <option key={fn.cle} value={fn.cle}>{fn.libelle_h || fn.libelle_n}</option>)}
-            </select>
-          </Field>
-          {profile?.fonction_cle && !profile.fonction_confirmee && (
-            <p style={{ fontSize: 11, color: T.warn, margin: "6px 2px 0" }}>{t("profil.fonctionAttente")}</p>
-          )}
+
+          {/* Block 1: consecration title (Berger/Bergere). The only current title
+              is Berger, so it is asked as a yes/no; the name feeds berger_declare. */}
+          <p style={{ fontWeight: 700, fontSize: 13, color: T.ink, margin: "8px 2px 4px" }}>{t("completer.blocTitre")}</p>
           <Field label={t("completer.fBergerDeclare")} highlight={hl("berger_declare")} info={t("completer.iBergerDeclare")}>
             <select style={inp("berger_declare")} value={f.berger_declare ? "oui" : "non"} onChange={(e) => set("berger_declare", e.target.value === "oui")}>
               <option value="non">{t("completer.bergerNon")}</option>
@@ -575,6 +632,33 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
               </Field>
               <p style={{ fontSize: 11, color: T.warn, margin: "6px 2px 0" }}>{t("completer.bergerAttente")}</p>
             </>
+          )}
+
+          {/* Block 2: special functions (multi-select, no scope). */}
+          {parCategorie("fonction_speciale").length > 0 && (
+            <>
+              <p style={{ fontWeight: 700, fontSize: 13, color: T.ink, margin: "16px 2px 4px" }}>{t("completer.blocFonctionSpeciale")}</p>
+              <BlocFonctions categorie="fonction_speciale" note={t("completer.noteFonctionSpeciale")} avecPerimetre={false} />
+            </>
+          )}
+
+          {/* Block 3: ordinary functions (multi-select, with scope). */}
+          {parCategorie("fonction").length > 0 && (
+            <>
+              <p style={{ fontWeight: 700, fontSize: 13, color: T.ink, margin: "16px 2px 4px" }}>{t("completer.blocFonction")}</p>
+              <BlocFonctions categorie="fonction" note={t("completer.noteFonction")} avecPerimetre />
+            </>
+          )}
+
+          {/* Block 4: particular (transversal) functions (multi-select, with scope). */}
+          {parCategorie("fonction_particuliere").length > 0 && (
+            <>
+              <p style={{ fontWeight: 700, fontSize: 13, color: T.ink, margin: "16px 2px 4px" }}>{t("completer.blocFonctionParticuliere")}</p>
+              <BlocFonctions categorie="fonction_particuliere" note={t("completer.noteFonctionParticuliere")} avecPerimetre />
+            </>
+          )}
+          {souhaitees.length > 0 && (
+            <p style={{ fontSize: 11, color: T.warn, margin: "10px 2px 0" }}>{t("completer.fonctionsAttente")}</p>
           )}
           {/* Community journey: the external member code (uppercased, unique,
               distinct from the ADSUM matricule), the entry date and the promotion.
@@ -674,6 +758,19 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           <RecapRow label={t("completer.recapTribu")} value={tribuNom || t("completer.recapNotChosenF")} ok={!!f.tribu_id} />
           {f.berger_declare && (
             <RecapRow label={t("completer.fBergerDeclare")} value={`${t("completer.bergerOui")}${f.berger_nom_declare ? ` (${f.berger_nom_declare})` : ""}`} ok />
+          )}
+          {souhaitees.length > 0 && (
+            <RecapRow
+              label={t("completer.blocFonction")}
+              value={souhaitees
+                .map((s) => {
+                  const fn = fonctions.find((x) => x.cle === s.cle);
+                  const lib = fn ? labelFonction(fn) : s.cle;
+                  return s.perimetre ? `${lib} (${s.perimetre})` : lib;
+                })
+                .join(", ")}
+              ok
+            />
           )}
           {(f.baptise || f.premiere_communion || f.confirme) && (
             <RecapRow label={t("completer.secVieSpirituelle")} value={[f.baptise ? t("completer.fBaptise") : "", f.premiere_communion ? t("completer.fPremiereCommunion") : "", f.confirme ? t("completer.fConfirme") : ""].filter(Boolean).join(", ")} ok />

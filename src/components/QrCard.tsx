@@ -39,6 +39,11 @@ interface QrCardProps {
   nomPastoral?: string | null;
   fonctionPrincipale?: string | null;
   fonctionPerimetre?: string | null;
+  // Resolved organisational appellation and its winning category (central resolver).
+  // Preferred for a title or special function (pure title, e.g. "Moderateur (Berger
+  // David)"); ordinary/particular functions fall back to the role+scope line below.
+  appellation?: string | null;
+  categoriePrincipale?: string | null;
 }
 
 /**
@@ -95,6 +100,8 @@ export function QrCard({
   nomPastoral,
   fonctionPrincipale,
   fonctionPerimetre,
+  appellation,
+  categoriePrincipale,
 }: QrCardProps): JSX.Element {
   const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -156,10 +163,17 @@ export function QrCard({
   const engagementLabel = engagementDisplay(engagement, t);
   const avatarInitials = initials({ prenoms, nom: memberNom });
 
-  // The distinguished line: consecration name first, otherwise the primary
-  // function (with its scope). A plain member shows nothing here.
-  const consecration = estBerger && nomPastoral ? nomPastoral : null;
-  const fonctionLigne = !consecration && fonctionPrincipale
+  // The distinguished line follows the central precedence. A title or special
+  // function uses the resolved appellation as-is (pure title, written in full,
+  // e.g. "Moderateur (Berger David)" or "Berger David"). Ordinary and particular
+  // functions keep the compact role+scope line. A plain member shows nothing.
+  const appellationTitre =
+    (categoriePrincipale === "titre" || categoriePrincipale === "fonction_speciale") && appellation
+      ? appellation
+      : estBerger && nomPastoral
+        ? nomPastoral
+        : null;
+  const fonctionLigne = !appellationTitre && fonctionPrincipale
     ? abregerRole(fonctionPerimetre ? `${fonctionPrincipale} - ${fonctionPerimetre}` : fonctionPrincipale)
     : null;
 
@@ -181,13 +195,13 @@ export function QrCard({
         </div>
         <div className="card-identity-text">
           {nom && <p className="card-name">{nom}</p>}
-          {consecration && (
+          {appellationTitre && (
             <p
               className="card-role"
               style={{ margin: "1px 0 0", fontSize: 12.5, fontWeight: 700, color: "#ffd98a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}
-              title={consecration}
+              title={appellationTitre}
             >
-              {consecration}
+              {appellationTitre}
             </p>
           )}
           {fonctionLigne && (
