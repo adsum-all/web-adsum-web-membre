@@ -25,6 +25,7 @@ import { Activites } from "./components/Activites.js";
 import { Calendrier } from "./components/Calendrier.js";
 import { Carte } from "./components/Carte.js";
 import { ActionBanner } from "./components/ActionBanner.js";
+import { BandeauPrioritaire } from "./components/BandeauPrioritaire.js";
 import { Consultations } from "./components/Consultations.js";
 import { Document } from "./components/Document.js";
 import { Dossier } from "./components/Dossier.js";
@@ -604,6 +605,9 @@ export function App(): JSX.Element {
           />
         ) : (
           <>
+            {/* Discreet, non-alarming priority banner for an active urgent/important
+                Information the member has not read, shown once per member. */}
+            <BandeauPrioritaire token={token} onOuvrir={() => { refreshInfoCount(); setTab("informations"); }} />
             {actions && actions.total > 0 && !(actionsMasquees && actions.urgence_max === "normale") && (
               <ActionBanner
                 actions={actions}
