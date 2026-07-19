@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 
 import "@adsum/tokens/tokens.css";
 import { App } from "./App.js";
+import { registerServiceWorker } from "./offline.js";
 import "./styles.css";
+
+registerServiceWorker();
 
 // Polyfill crypto.randomUUID for older mobile Safari (< 15.4) where it is missing.
 if (typeof crypto !== "undefined" && typeof crypto.randomUUID !== "function" && crypto.getRandomValues) {
