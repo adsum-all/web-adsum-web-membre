@@ -4,11 +4,14 @@ import { type InformationPrioritaire, getInformationsPrioritaires } from "../api
 import { useLang } from "../i18n.js";
 import { T } from "../proto.js";
 
-// Sober, non-alarming palette per level. IMPORTANT is amber, URGENT is a calm red,
-// never a full-screen flashing alert. INFO never triggers this banner.
+// Sober, non-alarming palette per level. URGENT is a calm red, IMPORTANT is amber,
+// a headline-pinned normal Information is a calm institutional indigo. Never a
+// full-screen flashing alert. The banner is opt-in (the admin pinned it), so it can
+// carry any priority, and the badge simply reflects that level.
 function meta(p: string, en: boolean): { bg: string; fg: string; label: string; glyph: string } {
-  if (p === "urgente") return { bg: "#fdecec", fg: "#c0392b", label: en ? "URGENT" : "URGENT", glyph: "!" };
-  return { bg: "#fff4e5", fg: "#b26a00", label: en ? "IMPORTANT" : "IMPORTANT", glyph: "◆" };
+  if (p === "urgente") return { bg: "#fdecec", fg: "#c0392b", label: "URGENT", glyph: "!" };
+  if (p === "importante") return { bg: "#fff4e5", fg: "#b26a00", label: "IMPORTANT", glyph: "◆" };
+  return { bg: "#eaf0fb", fg: "#2a4fad", label: en ? "HEADLINE" : "À LA UNE", glyph: "★" };
 }
 
 const CLE_VU = "adsum.info.vu";
