@@ -681,6 +681,19 @@ export interface InformationsFeedParams {
   offset?: number;
 }
 
+/** Active high-priority Informations for the discreet open-app banner. */
+export interface InformationPrioritaire {
+  id: string;
+  titre: string | null;
+  sous_titre: string | null;
+  priorite: InformationPriorite;
+  expire_le: string | null;
+}
+
+export function getInformationsPrioritaires(token: string): Promise<InformationPrioritaire[]> {
+  return authedGet<InformationPrioritaire[]>("/api/v1/membres/me/informations/prioritaires", token, apiMsg("Informations indisponibles", "Information unavailable"));
+}
+
 /** Paginated, filterable, searchable member feed for the Informations tab. */
 export function getMesInformationsFeed(token: string, params: InformationsFeedParams = {}): Promise<InformationsFeedPage> {
   return authedGet<InformationsFeedPage>(`/api/v1/membres/me/informations/feed${toQuery({ ...params })}`, token, apiMsg("Informations indisponibles", "Information unavailable"));
