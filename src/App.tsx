@@ -42,6 +42,7 @@ import { Recensement } from "./components/Recensement.js";
 import { Secu } from "./components/Secu.js";
 import { Session } from "./components/Session.js";
 import { MaHierarchie } from "./components/MaHierarchie.js";
+import { OrganigrammeGlobal } from "./components/OrganigrammeGlobal.js";
 import { MesApplications } from "./components/MesApplications.js";
 import { Settings } from "./components/Settings.js";
 import { Suivi } from "./components/Suivi.js";
@@ -61,7 +62,8 @@ type ViewId =
   | "demandes"
   | "consultations"
   | "mesApplications"
-  | "hierarchie";
+  | "hierarchie"
+  | "organigramme";
 
 /** i18n key of each screen title, resolved through the translator at render. */
 const VIEW_TITLES: Record<ViewId, string> = {
@@ -79,6 +81,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   consultations: "profilNav.consultations.title",
   mesApplications: "profilNav.apps.title",
   hierarchie: "profilNav.hierarchie.title",
+  organigramme: "profilNav.organigramme.title",
 };
 
 const HIDE_CHROME: ViewId[] = ["session", "sent"];
@@ -598,7 +601,9 @@ export function App(): JSX.Element {
         ) : view === "mesApplications" ? (
           <MesApplications token={token} />
         ) : view === "hierarchie" ? (
-          <MaHierarchie token={token} />
+          <MaHierarchie token={token} onOrganigramme={() => setView("organigramme")} />
+        ) : view === "organigramme" ? (
+          <OrganigrammeGlobal token={token} />
         ) : view === "secu" ? (
           <Secu token={token} onSettings={() => setView("settings")} />
         ) : view === "session" && activeEvent ? (
