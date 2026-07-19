@@ -4,7 +4,7 @@ import { type MembreProfile, type RefItem, getReference, soumettreModifications,
 import { useT } from "../i18n.js";
 import { uniteLabel } from "../name.js";
 import { T } from "../proto.js";
-import { type Focus, PhotoFocusEditor } from "./PhotoFocusEditor.js";
+import { RecadragePhoto } from "./RecadragePhoto.js";
 
 /** i18n key for EVERY member field the administration can unlock. Kept aligned
  * with the server _EDITABLE_FIELDS so any unlocked field is actually editable here
@@ -93,10 +93,11 @@ export function ModifierChamps({ token, profile, onSubmitted }: ModifierChampsPr
   const [refs, setRefs] = useState<Record<string, RefItem[]>>({});
   const photoInput = useRef<HTMLInputElement | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoFocus, setPhotoFocus] = useState<Focus>({ x: 50, y: 30 });
+  // Square crop is centered by construction, so no focal point is needed anymore.
+  const photoFocus = { x: 50, y: 50 };
   const [photoStaged, setPhotoStaged] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,19 +114,17 @@ export function ModifierChamps({ token, profile, onSubmitted }: ModifierChampsPr
 
   if (unlocked.length === 0 && !photoUnlocked) return null;
 
-  async function stagePhoto(file: File, focus: Focus): Promise<void> {
+  async function stagePhoto(file: File): Promise<void> {
     setPhotoBusy(true);
     setError(null);
     try {
-      await uploadPhoto(token, file, focus);
+      await uploadPhoto(token, file);
       setPhotoStaged(true);
-      setPhotoFocus(focus);
       setPhotoPreview(URL.createObjectURL(file));
     } catch (e) {
       setError(e instanceof Error && e.message ? e.message : t("modif.photoLoadError"));
     } finally {
       setPhotoBusy(false);
-      setPendingFile(null);
     }
   }
 
@@ -184,7 +183,7 @@ export function ModifierChamps({ token, profile, onSubmitted }: ModifierChampsPr
               style={{ display: "none" }}
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) setPendingFile(f);
+                if (f) { if (pendingUrl) URL.revokeObjectURL(pendingUrl); setPendingUrl(URL.createObjectURL(f)); }
                 e.target.value = "";
               }}
             />
@@ -239,12 +238,12 @@ export function ModifierChamps({ token, profile, onSubmitted }: ModifierChampsPr
         {busy ? t("common.sending") : t("modif.submit")}
       </button>
 
-      {pendingFile && (
-        <PhotoFocusEditor
-          file={pendingFile}
+      {pendingUrl && (
+        <RecadragePhoto
+          imageUrl={pendingUrl}
           busy={photoBusy}
-          onCancel={() => setPendingFile(null)}
-          onConfirm={(focus) => void stagePhoto(pendingFile, focus)}
+          onCancel={() => { URL.revokeObjectURL(pendingUrl); setPendingUrl(null); }}
+          onConfirm={(file) => { void stagePhoto(file); if (pendingUrl) URL.revokeObjectURL(pendingUrl); setPendingUrl(null); }}
         />
       )}
     </div>
