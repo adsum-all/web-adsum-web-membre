@@ -644,6 +644,8 @@ const DICT: Record<string, { fr: string; en: string }> = {
   },
   "profilNav.hierarchie.title": { fr: "Ma hiérarchie", en: "My hierarchy" },
   "profilNav.hierarchie.desc": { fr: "Mon rattachement et ma chaîne de responsabilité", en: "My attachment and line of responsibility" },
+  "profilNav.organigramme.title": { fr: "Organigramme global", en: "Full org chart" },
+  "profilNav.organigramme.desc": { fr: "L'organisation publiée, en lecture seule", en: "The published organisation, read-only" },
   "hierarchie.chargement": { fr: "Chargement de votre hiérarchie...", en: "Loading your hierarchy..." },
   "hierarchie.vide": { fr: "Aucune information de hiérarchie disponible.", en: "No hierarchy information available." },
   "hierarchie.intro": {
