@@ -786,8 +786,10 @@ export interface HierNiveau {
   rang: string;
   fonction: string;
   unite: string | null;
-  occupants: { nom: string }[];
+  occupants: { nom: string; interim?: boolean }[];
   vacant: boolean;
+  interim?: boolean;
+  titulaire?: string | null;
 }
 export interface HierChaine {
   titre: string;
@@ -797,6 +799,14 @@ export interface HierLien {
   type: string;
   libelle: string;
   detail: string | null;
+}
+export interface HierAppui {
+  type: string; // "vice" | "interim"
+  fonction: string;
+  perimetre: string | null;
+  detail: string | null;
+  depuis: string | null;
+  jusqu_au: string | null;
 }
 export interface HierRattachement {
   type: string;
@@ -812,6 +822,7 @@ export interface MaHierarchie {
   fonctions: HierFonction[];
   chaines: HierChaine[];
   titres: HierLien[];
+  appui_suppleance: HierAppui[];
   liens_particuliers: HierLien[];
   rattachements: HierRattachement[];
   // backward-compatible fields

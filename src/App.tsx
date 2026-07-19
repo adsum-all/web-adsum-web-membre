@@ -18,6 +18,7 @@ import {
   setFuseau,
 } from "./api.js";
 import { type Lang, LangContext, tr, useT } from "./i18n.js";
+import { clearApiCache, useOnline } from "./offline.js";
 import { civilName, initials as memberInitials } from "./name.js";
 import { T } from "./proto.js";
 import { CompleterProfil } from "./components/CompleterProfil.js";
@@ -312,6 +313,7 @@ export function App(): JSX.Element {
 
   const logout = useCallback(() => {
     if (token) void logoutSession(token).catch(() => undefined);
+    clearApiCache();
     saveToken(null);
     setToken(null);
     setProfile(null);
@@ -713,8 +715,15 @@ export function App(): JSX.Element {
 }
 
 function Shell({ children }: { children: React.ReactNode }): JSX.Element {
+  const online = useOnline();
+  const t = useT();
   return (
     <div className="phone">
+      {!online && (
+        <div role="status" className="offline-banner">
+          {t("app.offline.banner")}
+        </div>
+      )}
       <div className="phone-inner">{children}</div>
     </div>
   );

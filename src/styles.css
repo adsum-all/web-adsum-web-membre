@@ -68,6 +68,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 8px 14px calc(8px + env(safe-area-inset-top, 0px));
+  background: #8a5a12;
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
 .phone {
   min-height: 100vh;
   min-height: 100dvh;
