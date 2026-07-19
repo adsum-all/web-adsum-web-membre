@@ -764,6 +764,36 @@ export function getEvenements(token: string): Promise<EvenementOut[]> {
   return authedGet<EvenementOut[]>("/api/v1/membres/me/evenements", token, apiMsg("Activités indisponibles", "Activities unavailable"));
 }
 
+// Reference dates (institutional commemorations + catholic feasts) shown in the
+// calendar. They are NOT activities: never a survey, attendance or QR (est_activite
+// is always false). description is server-sanitised HTML.
+export interface DateReferenceOccurrence {
+  source_id: string;
+  origine: string;
+  categorie: string;
+  type: string | null;
+  titre: string;
+  date: string;
+  couleur: string | null;
+  couleur_hex: string | null;
+  priorite: string | null;
+  rang: string | null;
+  toute_journee: boolean;
+  anciennete: number | null;
+  description: string | null;
+  image_url: string | null;
+  lieu: string | null;
+  lien: string | null;
+  message_membre: string | null;
+  source: string | null;
+  badge: string;
+  est_activite: boolean;
+}
+
+export function getDatesReference(token: string, annee: number): Promise<{ annee: number; occurrences: DateReferenceOccurrence[] }> {
+  return authedGet(`/api/v1/membres/me/calendrier/dates-reference?annee=${annee}`, token, apiMsg("Dates de référence indisponibles", "Reference dates unavailable"));
+}
+
 export function getFonctions(token: string): Promise<FonctionItem[]> {
   return authedGet<FonctionItem[]>("/api/v1/fonctions", token, apiMsg("Fonctions indisponibles", "Functions unavailable"));
 }
