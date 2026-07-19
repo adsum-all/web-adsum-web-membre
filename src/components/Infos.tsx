@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { type MembreProfile, getDemandes, getPhotoUrl, photoObjectPosition, setPhotoFocus } from "../api.js";
-import { type Focus, PhotoFocusEditor } from "./PhotoFocusEditor.js";
+import { type MembreProfile, getDemandes, getPhotoUrl, photoObjectPosition, uploadPhoto } from "../api.js";
+import { RecadragePhoto } from "./RecadragePhoto.js";
 import { useT } from "../i18n.js";
 import { civilName, civilNameComplet } from "../name.js";
 import { T } from "../proto.js";
@@ -128,14 +128,15 @@ export function Infos({
     };
   }, [token, profile?.photo_url]);
 
-  // Re-frame the current photo (display-only focal point, no re-validation).
+  // Re-crop the current photo with the round cropper (pan/zoom), then upload the
+  // square crop. This replaces the older focal-point tweak with a real crop.
   const [cadrer, setCadrer] = useState(false);
   const [cadreBusy, setCadreBusy] = useState(false);
-  async function enregistrerCadrage(focus: Focus): Promise<void> {
+  async function recadrerUpload(file: File): Promise<void> {
     if (!token) return;
     setCadreBusy(true);
     try {
-      await setPhotoFocus(token, focus.x, focus.y);
+      await uploadPhoto(token, file);
       setCadrer(false);
       onProfileChange();
     } catch {
@@ -215,16 +216,11 @@ export function Infos({
       </div>
 
       {cadrer && photoUrl && (
-        <PhotoFocusEditor
+        <RecadragePhoto
           imageUrl={photoUrl}
-          initialFocus={
-            profile?.photo_focus_x != null && profile?.photo_focus_y != null
-              ? { x: profile.photo_focus_x, y: profile.photo_focus_y }
-              : null
-          }
           busy={cadreBusy}
           onCancel={() => setCadrer(false)}
-          onConfirm={(focus) => void enregistrerCadrage(focus)}
+          onConfirm={(file) => void recadrerUpload(file)}
         />
       )}
 
