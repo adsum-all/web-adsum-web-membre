@@ -660,9 +660,32 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           </Field>
           {f.berger_declare && (
             <>
-              <Field label={t("completer.fBergerNom")} highlight={hl("berger_nom_declare")} info={t("completer.iBergerNom")}>
-                <input style={inp("berger_nom_declare")} value={f.berger_nom_declare ?? ""} onChange={(e) => set("berger_nom_declare", e.target.value)} placeholder={t("completer.phBergerNom")} />
+              {/* The consecration title is DERIVED from the gender (Berger for a man,
+                  Bergere for a woman), matching the back-office and the database, so
+                  the member never types it. The name field is cleaned of any
+                  "Berger"/"Bergere" prefix to prevent a duplicated title. */}
+              <Field label={t("completer.bergerApercuTitre")}>
+                <input
+                  readOnly
+                  value={f.genre === "homme" ? "Berger" : f.genre === "femme" ? "Bergère" : ""}
+                  placeholder={t("completer.bergerGenreManquant")}
+                  style={{ ...inp("berger_declare"), background: T.tintb, color: T.b600, fontWeight: 700 }}
+                />
               </Field>
+              {!f.genre && <p style={{ fontSize: 11, color: T.warn, margin: "4px 2px 0" }}>{t("completer.bergerGenreManquant")}</p>}
+              <Field label={t("completer.fBergerNom")} highlight={hl("berger_nom_declare")} info={t("completer.iBergerNom")}>
+                <input
+                  style={inp("berger_nom_declare")}
+                  value={f.berger_nom_declare ?? ""}
+                  onChange={(e) => set("berger_nom_declare", e.target.value.replace(/^\s*berg(er|ere|ère)\s+/i, ""))}
+                  placeholder={t("completer.phBergerNom")}
+                />
+              </Field>
+              {f.berger_nom_declare && f.genre && (
+                <p style={{ fontSize: 12, color: T.ink, margin: "6px 2px 0", fontWeight: 600 }}>
+                  {t("completer.bergerApercu").replace("{v}", `${f.genre === "homme" ? "Berger" : "Bergère"} ${f.berger_nom_declare}`)}
+                </p>
+              )}
               <p style={{ fontSize: 11, color: T.warn, margin: "6px 2px 0" }}>{t("completer.bergerAttente")}</p>
             </>
           )}
