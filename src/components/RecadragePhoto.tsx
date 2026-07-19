@@ -63,7 +63,7 @@ export function RecadragePhoto({
       const [a, b] = [e.touches[0], e.touches[1]];
       const dist = Math.hypot((a?.clientX ?? 0) - (b?.clientX ?? 0), (a?.clientY ?? 0) - (b?.clientY ?? 0));
       if (!pinch.current) pinch.current = { dist, scale };
-      else setScale(Math.max(1, Math.min(4, pinch.current.scale * (dist / pinch.current.dist))));
+      else setScale(Math.max(0.1, Math.min(4, pinch.current.scale * (dist / pinch.current.dist))));
     }
   }
   function onTouchEnd(): void { pinch.current = null; }
@@ -117,7 +117,7 @@ export function RecadragePhoto({
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0 4px" }}>
           <span aria-hidden="true" style={{ fontSize: 13, color: T.mut }}>-</span>
-          <input type="range" min={1} max={4} step={0.01} value={scale} onChange={(e) => setScale(Number(e.target.value))} style={{ flex: 1 }} aria-label={en ? "Zoom" : "Zoom"} />
+          <input type="range" min={0.1} max={4} step={0.01} value={scale} onChange={(e) => setScale(Number(e.target.value))} style={{ flex: 1 }} aria-label={en ? "Zoom" : "Zoom"} />
           <span aria-hidden="true" style={{ fontSize: 17, color: T.mut }}>+</span>
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
