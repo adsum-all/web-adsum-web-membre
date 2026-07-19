@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ApiError,
@@ -102,10 +102,19 @@ function saveToken(jwt: string | null): void {
   }
 }
 
+// The active tab is mirrored in the URL hash so a refresh (or the browser back/forward)
+// stays on the SAME tab instead of resetting to the member card. No router library.
+const TABS_VALIDES: TabId[] = ["carte", "activites", "calendrier", "informations", "profil"];
+function tabFromHash(): TabId {
+  if (typeof window === "undefined") return "carte";
+  const h = window.location.hash.replace(/^#\/?/, "").split("/")[0] as TabId;
+  return TABS_VALIDES.includes(h) ? h : "carte";
+}
+
 export function App(): JSX.Element {
   const [token, setToken] = useState<string | null>(() => loadToken());
   const [profile, setProfile] = useState<MembreProfile | null>(null);
-  const [tab, setTab] = useState<TabId>("carte");
+  const [tab, setTab] = useState<TabId>(() => tabFromHash());
   const [notifOpen, setNotifOpen] = useState(false);
   const [recensementOpen, setRecensementOpen] = useState(false);
   const [dossierOpen, setDossierOpen] = useState(false);
@@ -156,6 +165,25 @@ export function App(): JSX.Element {
     },
     [refreshInscription],
   );
+
+  // Keep the URL hash in sync with the active tab so a refresh stays put. The ref marks
+  // our own write so the hashchange listener reacts only to external changes (back/forward).
+  const dernierHashTab = useRef<string>("");
+  useEffect(() => {
+    const h = `#/${tab}`;
+    dernierHashTab.current = h;
+    if (typeof window !== "undefined" && window.location.hash !== h) {
+      window.history.replaceState(null, "", h);
+    }
+  }, [tab]);
+  useEffect(() => {
+    const onHash = (): void => {
+      if (window.location.hash === dernierHashTab.current) return;
+      setTab(tabFromHash());
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   // Report the device time zone once per session so server-rendered times
   // (notifications, surveys, reminders) localize to the member's real zone.
