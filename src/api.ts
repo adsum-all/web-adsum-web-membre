@@ -774,7 +774,47 @@ export interface UniteHierarchie {
   fonction: string;
 }
 
+export interface HierFonction {
+  fonction: string;
+  categorie: string;
+  perimetre: string | null;
+  principale: boolean;
+  abreviation: string | null;
+  depuis: string | null;
+}
+export interface HierNiveau {
+  rang: string;
+  fonction: string;
+  unite: string | null;
+  occupants: { nom: string }[];
+  vacant: boolean;
+}
+export interface HierChaine {
+  titre: string;
+  niveaux: HierNiveau[];
+}
+export interface HierLien {
+  type: string;
+  libelle: string;
+  detail: string | null;
+}
+export interface HierRattachement {
+  type: string;
+  nom: string | null;
+  mon_role: string;
+  titulaire: string | null;
+  principal: boolean;
+}
+
 export interface MaHierarchie {
+  moi: { nom: string | null; est_berger: boolean; nom_pastoral: string | null };
+  position_principale: HierFonction | null;
+  fonctions: HierFonction[];
+  chaines: HierChaine[];
+  titres: HierLien[];
+  liens_particuliers: HierLien[];
+  rattachements: HierRattachement[];
+  // backward-compatible fields
   commission: UniteHierarchie | null;
   coordination: UniteHierarchie | null;
   intendance: UniteHierarchie | null;
@@ -784,6 +824,34 @@ export interface MaHierarchie {
 
 export function getMaHierarchie(token: string): Promise<MaHierarchie> {
   return authedGet<MaHierarchie>("/api/v1/membres/me/hierarchie", token, apiMsg("Hiérarchie indisponible", "Hierarchy unavailable"));
+}
+
+export interface OrgNoeudPublie {
+  id: string;
+  nom: string | null;
+  sous_titre: string | null;
+  membre_nom: string | null;
+  fonction_cle: string | null;
+  categorie: string | null;
+  unite_type: string | null;
+  effectif: number | null;
+  statut: string | null;
+  couleur: string | null;
+}
+export interface OrgLienPublie {
+  id: string;
+  source_id: string;
+  cible_id: string;
+  type_lien: string;
+  libelle: string | null;
+}
+export interface OrganigrammePublie {
+  version: { id: string; libelle: string; publie_le: string | null } | null;
+  noeuds: OrgNoeudPublie[];
+  liens: OrgLienPublie[];
+}
+export function getOrganigrammePublie(token: string): Promise<OrganigrammePublie> {
+  return authedGet<OrganigrammePublie>("/api/v1/organigramme/publie", token, apiMsg("Organigramme indisponible", "Org chart unavailable"));
 }
 
 export function getAnniversaires(
