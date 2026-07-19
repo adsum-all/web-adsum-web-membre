@@ -3,9 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import {
   type AnniversaireCategorie,
   type AnniversaireOut,
+  type DateReferenceOccurrence,
   type EvenementOut,
   type NotifPreferences,
   getAnniversaires,
+  getDatesReference,
   getEvenements,
   getNotifPreferences,
 } from "../api.js";
@@ -15,6 +17,7 @@ import { T } from "../proto.js";
 import { useResource } from "../useResource.js";
 import { CalendrierFiltres } from "./CalendrierFiltres.js";
 import { CalendrierJour } from "./CalendrierJour.js";
+import { CalendrierReferences } from "./CalendrierReferences.js";
 import { EmptyState } from "./ui.js";
 
 const FILTERS_KEY = "adsum.cal.filters.v1";
@@ -108,6 +111,22 @@ export function Calendrier({
   const [prefs, setPrefs] = useState<NotifPreferences | null>(null);
   const [birthdays, setBirthdays] = useState<AnniversaireOut[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Reference dates (institutional + catholic). Always visible regardless of the
+  // activity filters; only this dedicated toggle (on by default) can hide them.
+  const [referenceDates, setReferenceDates] = useState<DateReferenceOccurrence[]>([]);
+  const [afficherRef, setAfficherRef] = useState<boolean>(() => {
+    try { return localStorage.getItem("adsum.cal.refdates") !== "off"; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("adsum.cal.refdates", afficherRef ? "on" : "off"); } catch { /* ignore */ }
+  }, [afficherRef]);
+  useEffect(() => {
+    let alive = true;
+    getDatesReference(token, cursor.year)
+      .then((r) => alive && setReferenceDates(r.occurrences))
+      .catch(() => alive && setReferenceDates([]));
+    return () => { alive = false; };
+  }, [token, cursor.year]);
   // Filters are hydrated from localStorage so a member keeps their selection
   // across tab switches and app reloads, then serialised on every change.
   const initialFilters = useMemo(() => loadStoredFilters(), []);
@@ -248,6 +267,19 @@ export function Calendrier({
     return map;
   }, [birthdays, cursor.year, cursor.month]);
 
+  // Reference dates keyed by day (their `date` is already YYYY-MM-DD like cell.key).
+  // Independent of the activity filters, so a filter never hides a reference date.
+  const referenceByDay = useMemo(() => {
+    const map = new Map<string, DateReferenceOccurrence[]>();
+    if (!afficherRef) return map;
+    for (const o of referenceDates) {
+      const list = map.get(o.date) ?? [];
+      list.push(o);
+      map.set(o.date, list);
+    }
+    return map;
+  }, [referenceDates, afficherRef]);
+
   function togglePref(pref: keyof NotifPreferences): void {
     if (!prefs) return;
     setPrefs({ ...prefs, [pref]: !prefs[pref] });
@@ -342,6 +374,16 @@ export function Calendrier({
         {activeCount > 0 && (
           <button type="button" onClick={resetFiltres} aria-label={t("calendar.resetFilters")} style={{ flexShrink: 0, border: "none", background: "transparent", color: T.mut, fontSize: 18, lineHeight: 1, cursor: "pointer", fontFamily: "inherit" }}>×</button>
         )}
+        <button
+          type="button"
+          onClick={() => setAfficherRef((v) => !v)}
+          aria-pressed={afficherRef}
+          title={lang === "en" ? "Show reference dates in my calendar" : "Afficher les dates de référence dans mon calendrier"}
+          style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", borderRadius: 999, border: `1px solid ${afficherRef ? "#b6791b" : T.line}`, background: afficherRef ? "#fbeccb" : T.surf, color: afficherRef ? "#8a5a12" : T.mut, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+        >
+          <span aria-hidden="true">✦</span>
+          {lang === "en" ? "Reference dates" : "Dates de référence"}
+        </button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, marginBottom: 4 }}>
@@ -385,6 +427,12 @@ export function Calendrier({
                   <span key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: isSelected ? "#fff" : c }} />
                 ))}
                 {hasBirthday && <span style={{ width: 5, height: 5, borderRadius: "50%", background: isSelected ? "#ffd9a0" : T.warn }} />}
+                {(() => {
+                  // Reference dates use a SQUARE marker (not a round dot) so they read
+                  // as a distinct category at a glance.
+                  const r0 = (referenceByDay.get(cell.key) ?? [])[0];
+                  return r0 ? <span style={{ width: 5, height: 5, borderRadius: 1.5, background: isSelected ? "#fff" : (r0.couleur_hex || "#8a5a12") }} /> : null;
+                })()}
               </span>
             </button>
           );
@@ -392,6 +440,8 @@ export function Calendrier({
       </div>
 
       <CalendrierJour token={token} events={selectedEvents} anniversaires={selectedBirthdays} onJoin={onJoin} />
+
+      <CalendrierReferences dates={referenceByDay.get(selected) ?? []} />
 
       {sheetOpen && (
         <CalendrierFiltres
