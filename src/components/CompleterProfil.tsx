@@ -41,6 +41,7 @@ import {
 } from "./CompleterProfilParts.js";
 import { PaysSelect, PhoneField, indicatifDePays } from "./FormFields.js";
 import { PiecesJustificatives } from "./PiecesJustificatives.js";
+import { RecadragePhoto } from "./RecadragePhoto.js";
 import { SignatureEngagement } from "./SignatureEngagement.js";
 
 interface Props {
@@ -149,6 +150,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
   const [premierPrenom, setPremierPrenom] = useState(() => decouperPrenoms(initialFields(profile).prenoms).premier);
   const [autresPrenoms, setAutresPrenoms] = useState(() => decouperPrenoms(initialFields(profile).prenoms).autres);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [photoDejaEnvoyee, setPhotoDejaEnvoyee] = useState(false);
   const [pieceType, setPieceType] = useState("piece_identite");
   const [pieceFile, setPieceFile] = useState<File | null>(null);
@@ -819,14 +821,36 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           pieceFile={pieceFile}
           pieceType={pieceType}
           onPhotoFile={(file) => {
-            setPhotoFile(file);
-            setPhotoDejaEnvoyee(false);
+            // A newly picked photo opens the round cropper first (pan/zoom); the
+            // confirmed square crop becomes the uploaded photo. Clearing (null)
+            // simply removes the staged photo.
+            if (cropSrc) URL.revokeObjectURL(cropSrc);
+            if (file) {
+              setCropSrc(URL.createObjectURL(file));
+            } else {
+              setCropSrc(null);
+              setPhotoFile(null);
+              setPhotoDejaEnvoyee(false);
+            }
           }}
           onPieceFile={(file) => {
             setPieceFile(file);
             setPieceDejaEnvoyee(false);
           }}
           onPieceType={setPieceType}
+        />
+      )}
+
+      {cropSrc && (
+        <RecadragePhoto
+          imageUrl={cropSrc}
+          onCancel={() => { URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+          onConfirm={(file) => {
+            setPhotoFile(file);
+            setPhotoDejaEnvoyee(false);
+            URL.revokeObjectURL(cropSrc);
+            setCropSrc(null);
+          }}
         />
       )}
 
