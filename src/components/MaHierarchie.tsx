@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { getMaHierarchie, type HierChaine, type HierFonction, type MaHierarchie as MaHierarchieData } from "../api.js";
+import { getMaHierarchie, type HierAppui, type HierChaine, type HierFonction, type MaHierarchie as MaHierarchieData } from "../api.js";
 import { useLang } from "../i18n.js";
 import { T } from "../proto.js";
 
@@ -94,6 +94,20 @@ export function MaHierarchie({ token, onOrganigramme }: Readonly<{ token: string
         </section>
       )}
 
+      {/* 3b. Appui et suppleance */}
+      {data.appui_suppleance && data.appui_suppleance.length > 0 && (
+        <section>
+          <Eyebrow>{L("Appui et suppléance", "Support and relief")}</Eyebrow>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {data.appui_suppleance.map((a, i) => <AppuiCarte key={i} a={a} en={en} />)}
+          </div>
+          <p style={{ fontSize: 11, color: T.faint, margin: "8px 2px 0", lineHeight: 1.5 }}>
+            {L("Vos vice-fonctions et les intérims que vous assurez. Un intérim est une suppléance datée : il prend fin à sa date de clôture.",
+              "Your vice-functions and the interims you cover. An interim is a dated relief: it ends on its closing date.")}
+          </p>
+        </section>
+      )}
+
       {/* 4. Mes titres et liens particuliers */}
       {(data.titres.length > 0 || data.liens_particuliers.length > 0) && (
         <section>
@@ -165,6 +179,30 @@ function FonctionCarte({ f, principale, en }: Readonly<{ f: HierFonction; princi
   );
 }
 
+function AppuiCarte({ a, en }: Readonly<{ a: HierAppui; en: boolean }>): JSX.Element {
+  const L = (fr: string, e: string): string => (en ? e : fr);
+  const estInterim = a.type === "interim";
+  const badge = estInterim ? L("Intérim", "Interim") : L("Vice-fonction", "Vice-function");
+  const couleur = estInterim ? "#8a5a12" : T.b600;
+  const fond = estInterim ? "#fbeccb" : T.tintb;
+  return (
+    <div style={{ background: T.surf, border: `1px solid ${T.line}`, borderLeft: `3px solid ${couleur}`, borderRadius: 13, padding: "12px 14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ fontWeight: 800, fontSize: 15, color: T.ink }}>{a.fonction}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: couleur, background: fond, borderRadius: 999, padding: "1px 8px" }}>{badge}</span>
+      </div>
+      {a.perimetre && <div style={{ fontSize: 12.5, color: T.mut, marginTop: 4 }}>{a.perimetre}</div>}
+      {a.detail && <div style={{ fontSize: 12, color: T.mut, marginTop: 3 }}>{a.detail}</div>}
+      {estInterim && (a.depuis || a.jusqu_au) && (
+        <div style={{ fontSize: 11, color: T.faint, marginTop: 4 }}>
+          {a.depuis ? `${L("depuis le", "since")} ${a.depuis}` : ""}
+          {a.jusqu_au ? ` · ${L("jusqu'au", "until")} ${a.jusqu_au}` : ` · ${L("sans échéance", "open-ended")}`}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChaineCarte({ ch, ouverte, onToggle, en }: Readonly<{ ch: HierChaine; ouverte: boolean; onToggle: () => void; en: boolean }>): JSX.Element {
   const L = (fr: string, e: string): string => (en ? e : fr);
   return (
@@ -192,8 +230,18 @@ function ChaineCarte({ ch, ouverte, onToggle, en }: Readonly<{ ch: HierChaine; o
                     <>
                       {multi && <div style={{ fontSize: 10.5, color: T.faint, marginTop: 3 }}>{L("Mes responsables", "My leads")}</div>}
                       {n.occupants.map((o, j) => (
-                        <div key={j} style={{ fontSize: 12.5, color: T.mut, marginTop: j === 0 ? 2 : 1 }}>{o.nom}</div>
+                        <div key={j} style={{ fontSize: 12.5, color: T.mut, marginTop: j === 0 ? 2 : 1, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <span>{o.nom}</span>
+                          {o.interim && (
+                            <span style={{ fontSize: 9.5, fontWeight: 700, color: "#8a5a12", background: "#fbeccb", borderRadius: 999, padding: "1px 7px" }}>
+                              {L("par intérim", "acting")}
+                            </span>
+                          )}
+                        </div>
                       ))}
+                      {n.interim && n.titulaire && (
+                        <div style={{ fontSize: 11, color: T.faint, marginTop: 3 }}>{L("Titulaire habituel", "Usual holder")} : {n.titulaire}</div>
+                      )}
                     </>
                   )}
                 </div>

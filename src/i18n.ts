@@ -327,6 +327,11 @@ const DICT: Record<string, { fr: string; en: string }> = {
   },
   "app.nonMembre.link": { fr: "Ouvrir le back-office ADSUM", en: "Open the ADSUM back office" },
 
+  "app.offline.banner": {
+    fr: "Hors ligne : les dernières données consultées restent affichées. Les modifications reprendront au retour du réseau.",
+    en: "Offline: your last viewed data stays visible. Changes will resume when the network is back.",
+  },
+
   "app.inscriptionLoad.errorTitle": { fr: "Connexion interrompue", en: "Connection interrupted" },
   "app.inscriptionLoad.errorBody": {
     fr: "Impossible de récupérer l'état de votre inscription pour le moment. Vérifiez votre connexion, puis réessayez.",
