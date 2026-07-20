@@ -1,0 +1,25 @@
+/* Badge/button classes the copied org-chart components rely on, ported verbatim from
+   the back-office design system so CategorieBadge and the OrgCanvas toolbar render
+   identically here. Only the classes missing from the member styles.css are added. */
+
+.btn-inline {
+  width: auto;
+}
+
+/* Attribution categories: one distinct, accessible pastel tone per category. */
+.badge-cat-titre {
+  background: #f6edd3;
+  color: #7a5a12;
+}
+.badge-cat-speciale {
+  background: #e5ecfb;
+  color: #26408f;
+}
+.badge-cat-fonction {
+  background: #daf0ee;
+  color: #0f6b6b;
+}
+.badge-cat-particuliere {
+  background: #efe6f7;
+  color: #653597;
+}
