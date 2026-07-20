@@ -43,7 +43,6 @@ import { Recensement } from "./components/Recensement.js";
 import { Secu } from "./components/Secu.js";
 import { Session } from "./components/Session.js";
 import { MaHierarchie } from "./components/MaHierarchie.js";
-import { OrganigrammeGlobal } from "./components/OrganigrammeGlobal.js";
 import { MesApplications } from "./components/MesApplications.js";
 import { Settings } from "./components/Settings.js";
 import { Suivi } from "./components/Suivi.js";
@@ -603,9 +602,7 @@ export function App(): JSX.Element {
         ) : view === "mesApplications" ? (
           <MesApplications token={token} />
         ) : view === "hierarchie" ? (
-          <MaHierarchie token={token} onOrganigramme={() => setView("organigramme")} />
-        ) : view === "organigramme" ? (
-          <OrganigrammeGlobal token={token} />
+          <MaHierarchie token={token} membreId={profile?.id ?? null} />
         ) : view === "secu" ? (
           <Secu token={token} onSettings={() => setView("settings")} />
         ) : view === "session" && activeEvent ? (

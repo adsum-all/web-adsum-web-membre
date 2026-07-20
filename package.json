@@ -15,11 +15,14 @@
   "dependencies": {
     "@adsum/qr": "^0.1.0",
     "@adsum/tokens": "^0.1.0",
+    "@xyflow/react": "^12.11.2",
+    "dagre": "^0.8.5",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/dagre": "^0.7.54",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",

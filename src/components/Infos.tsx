@@ -252,9 +252,7 @@ export function Infos({
           <Row key={i} label={i === 0 ? t("infos.rowFonction") : ""} value={f.perimetre ? `${f.libelle} - ${f.perimetre}` : f.libelle} />
         ))}
         <Row label={t("completer.fGenre")} value={pretty(profile?.genre)} />
-        <Row label={profile?.naissance_annee_visible ? t("completer.fDateNaissance") : t("infos.rowAnniversaire")} value={naissance(profile?.date_naissance, !!profile?.naissance_annee_visible)} />
-        <Row label={t("infos.rowMatricule")} value={profile?.matricule ?? "-"} />
-        <Row label={t("infos.rowCodeMembre")} value={profile?.code_membre ?? "-"} last />
+        <Row label={profile?.naissance_annee_visible ? t("completer.fDateNaissance") : t("infos.rowAnniversaire")} value={naissance(profile?.date_naissance, !!profile?.naissance_annee_visible)} last />
       </Group>
 
       <Group title={t("infos.groupCoordonnees")}>
@@ -272,18 +270,12 @@ export function Infos({
         <Row label={t("infos.rowCheminement")} value={pretty(profile?.cheminement_pastoral)} last />
       </Group>
 
-      <Group title={t("infos.groupOrganisation")}>
-        <Row label={t("app.profil.commission")} value={profile?.commission ?? "-"} />
-        <Row label={t("completer.axeIntendance")} value={profile?.intendance ?? "-"} />
-        <Row label={profile?.intendant_titre ?? t("infos.rowIntendant")} value={profile?.intendant ?? "-"} />
-        <Row label={t("completer.axeCoordination")} value={profile?.coordination ?? "-"} />
-        <Row label={profile?.coordinateur_titre ?? t("infos.rowCoordinateur")} value={profile?.coordinateur ?? "-"} last />
-      </Group>
-
       <Group title={t("infos.groupVie")}>
         <Row label={t("infos.rowSituation")} value={matrimonial + marriage + cheminement} />
         <Row label={t("completer.fProfession")} value={profile?.profession ?? "-"} />
-        <Row label={t("completer.fNiveauEtudes")} value={profile?.niveau_etudes ?? "-"} last />
+        <Row label={t("completer.fNiveauEtudes")} value={profile?.niveau_etudes ?? "-"} />
+        <Row label={t("infos.rowMatricule")} value={profile?.matricule ?? "-"} />
+        <Row label={t("infos.rowCodeMembre")} value={profile?.code_membre ?? "-"} last />
       </Group>
 
       {unlocked && token && profile && (
