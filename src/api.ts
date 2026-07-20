@@ -794,6 +794,21 @@ export function getDatesReference(token: string, annee: number): Promise<{ annee
   return authedGet(`/api/v1/membres/me/calendrier/dates-reference?annee=${annee}`, token, apiMsg("Dates de référence indisponibles", "Reference dates unavailable"));
 }
 
+/** Download the member's reference-date iCalendar (.ics) for a year. */
+export async function telechargerDatesReferenceICS(token: string, annee: number): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/membres/me/calendrier/dates-reference.ics?annee=${annee}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(apiMsg("Export impossible", "Export failed"));
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `dates-reference-${annee}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function getFonctions(token: string): Promise<FonctionItem[]> {
   return authedGet<FonctionItem[]>("/api/v1/fonctions", token, apiMsg("Fonctions indisponibles", "Functions unavailable"));
 }

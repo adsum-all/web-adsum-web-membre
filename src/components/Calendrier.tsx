@@ -10,6 +10,7 @@ import {
   getDatesReference,
   getEvenements,
   getNotifPreferences,
+  telechargerDatesReferenceICS,
 } from "../api.js";
 import { type Lang, useLang, useT } from "../i18n.js";
 import { dayKey, monthGrid, monthLabel } from "../format.js";
@@ -442,6 +443,16 @@ export function Calendrier({
       <CalendrierJour token={token} events={selectedEvents} anniversaires={selectedBirthdays} onJoin={onJoin} />
 
       <CalendrierReferences dates={referenceByDay.get(selected) ?? []} />
+
+      {afficherRef && referenceDates.length > 0 && (
+        <button
+          type="button"
+          onClick={() => void telechargerDatesReferenceICS(token, cursor.year).catch(() => undefined)}
+          style={{ marginTop: 14, width: "100%", height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surf, color: T.mut, fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}
+        >
+          {lang === "en" ? `Export ${cursor.year} reference dates (.ics)` : `Exporter les dates de référence ${cursor.year} (.ics)`}
+        </button>
+      )}
 
       {sheetOpen && (
         <CalendrierFiltres
