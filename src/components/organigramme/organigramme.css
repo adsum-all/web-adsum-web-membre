@@ -1,0 +1,436 @@
+/* Organigramme hiérarchique: premium canvas built on the ADSUM design tokens.
+   One dominant navy accent (--adsum-acc), teal and purple only as deliberate
+   secondary-link colors. Light first, dark theme inherited from the tokens. */
+
+.org-page {
+  max-width: 1320px;
+}
+
+/* Mode switch (consultation / edition) */
+.org-modes {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--adsum-board);
+  border-radius: var(--adsum-radius-pill);
+}
+.org-mode-btn {
+  appearance: none;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: var(--adsum-text-sm);
+  font-weight: 600;
+  color: var(--adsum-mut);
+  padding: 7px 16px;
+  border-radius: var(--adsum-radius-pill);
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+}
+.org-mode-btn:hover {
+  color: var(--adsum-ink);
+}
+.org-mode-btn.is-active {
+  background: var(--adsum-panel);
+  color: var(--adsum-acc);
+  box-shadow: var(--adsum-shadow-sm);
+}
+.org-mode-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(42, 79, 173, 0.28);
+}
+
+/* Version lifecycle bar */
+.org-versions {
+  background: var(--adsum-panel);
+  border: 1px solid var(--adsum-line);
+  border-radius: var(--adsum-radius-lg);
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--adsum-shadow-sm);
+}
+.org-versions-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.org-versions-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--adsum-text-sm);
+  color: var(--adsum-mut);
+  font-weight: 500;
+  min-width: 240px;
+  flex: 1 1 240px;
+}
+.org-versions select,
+.org-versions-create select,
+.org-versions-create input {
+  padding: 10px 12px;
+  border-radius: var(--adsum-radius-md);
+  border: 1px solid var(--adsum-line);
+  background: var(--adsum-bg);
+  color: var(--adsum-ink);
+  font-size: var(--adsum-text-sm);
+  font-family: inherit;
+}
+.org-versions-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.org-versions-create {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--adsum-line);
+}
+.org-versions-create input {
+  flex: 1 1 260px;
+}
+.org-versions-source {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--adsum-text-xs);
+  color: var(--adsum-mut);
+}
+
+/* Inline confirm and validation report */
+.org-confirm {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--adsum-line);
+  border-radius: var(--adsum-radius-md);
+  background: var(--adsum-bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: var(--adsum-text-sm);
+}
+.org-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+.org-validation {
+  margin-top: 14px;
+  border-radius: var(--adsum-radius-md);
+  padding: 12px 14px;
+  border: 1px solid var(--adsum-line);
+  font-size: var(--adsum-text-sm);
+}
+.org-validation.is-ok {
+  background: var(--adsum-ok-bg);
+  border-color: transparent;
+}
+.org-validation.is-blocked {
+  background: var(--adsum-danger-bg);
+  border-color: transparent;
+}
+.org-validation-head {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+.org-validation.is-ok .org-validation-head {
+  color: var(--adsum-ok);
+}
+.org-validation.is-blocked .org-validation-head {
+  color: var(--adsum-danger);
+}
+.org-validation-group {
+  margin-top: 6px;
+}
+.org-validation-title {
+  margin: 0 0 2px;
+  font-weight: 600;
+  font-size: var(--adsum-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--adsum-ink2);
+}
+.org-validation ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* Edit toolbar */
+.org-toolbar-edit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+/* Canvas frame */
+.org-canvas-wrap {
+  height: calc(100vh - 210px);
+  min-height: 620px;
+  border: 1px solid var(--adsum-line);
+  border-radius: var(--adsum-radius-lg);
+  overflow: hidden;
+  background: var(--adsum-board);
+  position: relative;
+}
+.org-canvas-state {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.org-canvas-wrap .react-flow {
+  background: transparent;
+}
+
+/* Toolbar above the canvas + the flow area below it, so tools are always visible
+   and never covered by the cards. */
+.org-canvas-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.org-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--adsum-line);
+  background: var(--adsum-panel);
+}
+.org-bar-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 2px;
+  background: var(--adsum-line);
+}
+.org-flow {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.org-flow .react-flow {
+  width: 100%;
+  height: 100%;
+}
+.org-empty {
+  text-align: center;
+  max-width: 460px;
+}
+.org-empty-title {
+  font-family: var(--adsum-font-display);
+  font-size: var(--adsum-text-lg);
+  margin: 0 0 6px;
+}
+
+/* Custom node card */
+.org-node {
+  width: 236px;
+  background: var(--adsum-panel);
+  border: 1px solid var(--adsum-line);
+  border-radius: 14px;
+  padding: 12px 14px 12px 16px;
+  box-shadow: var(--adsum-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  font-family: var(--adsum-font-ui);
+  transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+}
+.org-node::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 4px;
+  background: var(--adsum-acc);
+}
+.org-node:hover {
+  box-shadow: var(--adsum-shadow-md);
+  transform: translateY(-1px);
+}
+.org-node.is-selected {
+  border-color: var(--adsum-acc);
+  box-shadow: 0 0 0 3px rgba(42, 79, 173, 0.2);
+}
+.org-node-unit {
+  background: linear-gradient(180deg, var(--adsum-panel), var(--adsum-brand-50));
+}
+.org-node-actif::before { background: var(--adsum-ok); }
+.org-node-vacant::before { background: #b6791b; }
+.org-node-attente::before { background: var(--adsum-acc); }
+.org-node-archive::before { background: var(--adsum-mut); }
+
+.org-node-top {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.org-avatar {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-family: var(--adsum-font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  background: linear-gradient(140deg, var(--adsum-brand-500), var(--adsum-acc2));
+}
+.org-avatar[data-kind="structure"] {
+  background: linear-gradient(140deg, #12867f, #0f6b6b);
+}
+.org-avatar[data-kind="groupe"] {
+  background: linear-gradient(140deg, #7d52b0, #653597);
+}
+.org-node-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.org-node-name {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.22;
+  color: var(--adsum-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.org-node-sub {
+  font-size: 12px;
+  color: var(--adsum-mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.org-node-sub-mut {
+  font-style: italic;
+  opacity: 0.85;
+}
+.org-node-sub-vacant {
+  color: #b6791b;
+  font-weight: 600;
+  font-style: normal;
+  opacity: 1;
+}
+.org-node-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.org-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--adsum-ink2);
+  background: var(--adsum-board);
+  padding: 2px 8px;
+  border-radius: var(--adsum-radius-pill);
+}
+.org-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--adsum-mut);
+  margin-left: auto;
+}
+.org-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  display: inline-block;
+}
+.org-dot-actif { background: var(--adsum-ok); }
+.org-dot-vacant { background: #b6791b; }
+.org-dot-attente { background: var(--adsum-acc); }
+.org-dot-archive { background: var(--adsum-mut); }
+
+.org-node-actions {
+  display: flex;
+  gap: 6px;
+}
+.org-mini-btn {
+  appearance: none;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--adsum-line);
+  background: var(--adsum-panel);
+  color: var(--adsum-ink2);
+  cursor: pointer;
+}
+.org-mini-btn:hover { background: var(--adsum-bg); }
+.org-mini-danger { color: var(--adsum-danger); }
+.org-mini-danger:hover { background: var(--adsum-danger-bg); }
+
+/* Collapse / expand affordance */
+.org-collapse {
+  position: absolute;
+  left: 50%;
+  bottom: -13px;
+  transform: translateX(-50%);
+  min-width: 26px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--adsum-radius-pill);
+  border: 1px solid var(--adsum-line);
+  background: var(--adsum-panel);
+  box-shadow: var(--adsum-shadow-sm);
+  color: var(--adsum-acc);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  z-index: 3;
+}
+.org-collapse:hover { border-color: var(--adsum-acc); }
+.org-collapse:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(42, 79, 173, 0.28);
+}
+.org-caret {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--adsum-acc);
+}
+
+/* React Flow handles: discreet, revealed on hover for a clean read */
+.org-h.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background: var(--adsum-acc);
+  border: 2px solid var(--adsum-panel);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.org-node:hover .org-h.react-flow__handle {
+  opacity: 0.55;
+}
+
+/* Search, legend, node editor, modal, React Flow chrome, responsive and print
+   rules live in organigramme-parts.css (imported alongside this file), so no
+   single stylesheet crosses the size gate. */
