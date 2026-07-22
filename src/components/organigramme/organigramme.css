@@ -487,3 +487,11 @@
 /* Search, legend, node editor, modal, React Flow chrome, responsive and print
    rules live in organigramme-parts.css (imported alongside this file), so no
    single stylesheet crosses the size gate. */
+
+/* Mobile reading of the published chart: hide the minimap so it never covers the
+   graph on a phone, and keep the zoom controls compact. Pinch to zoom and drag to
+   pan keep working, and "Adapter a l'ecran" refits the whole chart on demand. */
+@media (max-width: 820px) {
+  .org-flow .react-flow__minimap { display: none; }
+  .org-flow .react-flow__controls { transform: scale(0.92); transform-origin: bottom left; }
+}
