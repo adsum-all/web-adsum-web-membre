@@ -21,7 +21,7 @@ import "./organigramme-badges.css";
  * details are available, but nothing can be edited. A "Me centrer" button reveals and
  * centres on the connected member's own node.
  */
-export function OrganigrammePublieMembre({ token, membreId }: Readonly<{ token: string; membreId?: string | null }>): JSX.Element {
+export function OrganigrammePublieMembre({ token, membreId, affichage = "interactif" }: Readonly<{ token: string; membreId?: string | null; affichage?: "interactif" | "image" }>): JSX.Element {
   const en = useLang() === "en";
   const L = (fr: string, e: string): string => (en ? e : fr);
   const [data, setData] = useState<OrgContenuPublie | null>(null);
@@ -90,6 +90,7 @@ export function OrganigrammePublieMembre({ token, membreId }: Readonly<{ token: 
         <OrgCanvas
           contenu={contenu}
           mode="consultation"
+          minimal={affichage === "image"}
           onSelectNode={(n) => { setDetailNode(n); setSelectedId(n.id); }}
           selectedNodeId={selectedId}
           centerToken={centerToken}
