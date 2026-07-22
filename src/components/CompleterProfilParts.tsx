@@ -94,6 +94,7 @@ export function initialFields(p: MembreProfile | null): ProfilFields {
     fonction_cle: p?.fonction_cle ?? "",
     berger_declare: p?.berger_declare ?? false,
     berger_nom_declare: p?.berger_nom_declare ?? "",
+    equipe_dirigeante_declaree: p?.equipe_dirigeante_declaree ?? false,
     // Prefill the declared functions from the member's already-held ones (by key),
     // so a returning member sees their selections instead of an empty set.
     fonctions_souhaitees: (p?.fonctions ?? [])

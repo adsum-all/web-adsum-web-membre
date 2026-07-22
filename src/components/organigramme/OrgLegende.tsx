@@ -35,7 +35,9 @@ const STATUTS: OrgStatut[] = ["actif", "vacant", "attente", "archive"];
  * collapsible so it never covers the graph. Each kind is described in words and
  * shown with its exact signature, so meaning never rests on color alone. */
 export function OrgLegende(): JSX.Element {
-  const [open, setOpen] = useState(true);
+  // Collapsed by default so the legend is a small chip that never covers the graph;
+  // the reader opens it on demand. This keeps the canvas clear, especially on a phone.
+  const [open, setOpen] = useState(false);
 
   return (
     <div className={`org-legende ${open ? "is-open" : ""}`}>

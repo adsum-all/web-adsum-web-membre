@@ -37,7 +37,20 @@ const LABELS: Record<string, string> = {
   baptise: "modif.lblBaptise",
   confirme: "modif.lblConfirme",
   premiere_communion: "modif.lblPremiereCommunion",
+  nom_naissance: "completer.fNomNaissance",
+  nom_marital: "completer.fNomMarital",
+  nom_affiche: "completer.fNomAffiche",
+  whatsapp_numero: "completer.fWhatsapp",
+  date_entree: "completer.fDateEntree",
+  promotion: "completer.fPromotion",
+  berger_declare: "completer.fBergerDeclare",
+  berger_nom_declare: "completer.fBergerNom",
 };
+
+// Choice of which family name is displayed (matches the DB CHECK on nom_affiche).
+const NOMS_AFFICHE: [string, string][] = [
+  ["nom", "modif.lblNom"], ["naissance", "completer.fNomNaissance"], ["marital", "completer.fNomMarital"],
+];
 
 const SITUATIONS: [string, string][] = [
   ["celibataire", "completer.sitCelibataire"], ["en_couple", "completer.sitEnCouple"], ["fiance", "completer.sitFiance"],
@@ -286,7 +299,8 @@ function Field({
   if (field === "genre") return <Select value={value} onChange={onChange} options={GENRES} />;
   if (field === "type_mariage") return <Select value={value} onChange={onChange} options={TYPES_MARIAGE} />;
   if (field === "type_membre") return <Select value={value} onChange={onChange} options={TYPES_MEMBRE} />;
-  if (field === "baptise" || field === "confirme" || field === "premiere_communion" || field === "naissance_annee_visible" || field === "en_cheminement") {
+  if (field === "nom_affiche") return <Select value={value} onChange={onChange} options={NOMS_AFFICHE} />;
+  if (field === "baptise" || field === "confirme" || field === "premiere_communion" || field === "naissance_annee_visible" || field === "en_cheminement" || field === "berger_declare") {
     return <Select value={value} onChange={onChange} options={OUI_NON} />;
   }
   const kind = REF_KIND[field];
@@ -305,11 +319,11 @@ function Field({
       </select>
     );
   }
-  const upper = field === "nom" || field === "code_membre";
+  const upper = field === "nom" || field === "code_membre" || field === "nom_naissance" || field === "nom_marital";
   return (
     <input
       style={{ ...INPUT_STYLE, ...(upper ? { textTransform: "uppercase" } : {}) }}
-      type={field === "date_naissance" ? "date" : "text"}
+      type={field === "date_naissance" || field === "date_entree" ? "date" : "text"}
       value={value}
       onChange={(e) => onChange(upper ? e.target.value.toUpperCase() : e.target.value)}
     />
