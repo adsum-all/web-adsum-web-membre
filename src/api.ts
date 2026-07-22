@@ -982,6 +982,15 @@ export function getOrganigrammeStatistiques(token: string): Promise<OrgStatistiq
   return authedGet<OrgStatistiques>("/api/v1/organigramme/statistiques", token, apiMsg("Statistiques indisponibles", "Statistics unavailable"));
 }
 
+/** Back-office controlled display settings for the member hierarchy view. */
+export interface OrganigrammeReglages {
+  onglets: { chaine: boolean; rattachements: boolean; titres: boolean; organigramme: boolean };
+  affichage: "interactif" | "image";
+}
+export function getOrganigrammeReglages(token: string): Promise<OrganigrammeReglages> {
+  return authedGet<OrganigrammeReglages>("/api/v1/organigramme/reglages", token, apiMsg("Réglages indisponibles", "Settings unavailable"));
+}
+
 export function getAnniversaires(
   token: string,
   params: { categorie: AnniversaireCategorie; mois?: number },
