@@ -199,13 +199,66 @@
 }
 .org-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
-  padding: 9px 12px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--adsum-line);
   background: var(--adsum-panel);
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
+.org-bar > * { flex: 0 0 auto; }
+
+/* Compact "Affichage" menu: groups the view controls behind one summary button so
+   the toolbar stays a single thin row and never covers the chart. */
+.org-menu { position: relative; }
+.org-menu-summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.org-menu-summary::-webkit-details-marker { display: none; }
+.org-menu-chev {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+}
+.org-menu[open] > .org-menu-summary .org-menu-chev { transform: rotate(180deg); }
+.org-menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 2px;
+  background: var(--adsum-panel);
+  border: 1px solid var(--adsum-line);
+  border-radius: var(--adsum-radius-md);
+  box-shadow: var(--adsum-shadow-md);
+}
+.org-menu-item {
+  text-align: left;
+  padding: 9px 11px;
+  border: none;
+  background: none;
+  border-radius: var(--adsum-radius-sm);
+  color: var(--adsum-ink);
+  font-family: inherit;
+  font-size: var(--adsum-text-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.org-menu-item:hover,
+.org-menu-item:focus-visible { background: var(--adsum-bg); outline: none; }
 .org-bar-sep {
   width: 1px;
   align-self: stretch;

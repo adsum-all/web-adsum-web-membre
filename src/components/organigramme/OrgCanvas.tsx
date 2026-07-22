@@ -53,6 +53,11 @@ export interface OrgCanvasProps {
 const noop = (): void => undefined;
 const normalize = (s: string): string => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
+/** Close the enclosing <details> "Affichage" menu after a command is chosen. */
+const closeMenu = (e: { currentTarget: HTMLElement }): void => {
+  (e.currentTarget.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open");
+};
+
 /** Stable fingerprint of the content that actually affects the drawing. A 20s
  * background poll returns a fresh object with identical data: keying the layout on
  * this string, not on object identity, stops such a poll from re-syncing the canvas
@@ -327,19 +332,29 @@ function OrgCanvasInner({
             />
             <button type="submit" className="btn btn-primary btn-inline">Centrer</button>
           </form>
-          <span className="org-bar-sep" aria-hidden="true" />
-          <button type="button" className="btn btn-ghost btn-inline" onClick={vueGenerale} title="Afficher uniquement les grands blocs">
-            Vue générale
-          </button>
-          <button type="button" className="btn btn-ghost btn-inline" onClick={toutAfficher} title="Déplier toutes les branches">
-            Afficher tout
-          </button>
-          <button type="button" className="btn btn-ghost btn-inline" onClick={toutReduire} title="Replier toutes les branches">
-            Réduire tout
-          </button>
-          <button type="button" className="btn btn-ghost btn-inline" onClick={() => void rf.fitView({ padding: 0.18, duration: 400, maxZoom: 1 })} title="Adapter à l'écran">
-            Adapter à l'écran
-          </button>
+          {/* The view controls are grouped in a compact "Affichage" menu so the
+              toolbar stays a single thin row and never covers the chart, especially
+              on a phone. The menu closes as soon as a command is chosen. */}
+          <details className="org-menu">
+            <summary className="btn btn-ghost btn-inline org-menu-summary" title="Options d'affichage de l'organigramme">
+              Affichage
+              <span className="org-menu-chev" aria-hidden="true" />
+            </summary>
+            <div className="org-menu-list" role="menu">
+              <button type="button" role="menuitem" className="org-menu-item" onClick={(e) => { vueGenerale(); closeMenu(e); }}>
+                Vue générale
+              </button>
+              <button type="button" role="menuitem" className="org-menu-item" onClick={(e) => { toutAfficher(); closeMenu(e); }}>
+                Afficher tout
+              </button>
+              <button type="button" role="menuitem" className="org-menu-item" onClick={(e) => { toutReduire(); closeMenu(e); }}>
+                Réduire tout
+              </button>
+              <button type="button" role="menuitem" className="org-menu-item" onClick={(e) => { void rf.fitView({ padding: 0.18, duration: 400, maxZoom: 1 }); closeMenu(e); }}>
+                Adapter à l'écran
+              </button>
+            </div>
+          </details>
           {editable ? (
             <>
               <span className="org-bar-sep" aria-hidden="true" />
