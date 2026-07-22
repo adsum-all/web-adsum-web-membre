@@ -48,6 +48,9 @@ export interface OrgCanvasProps {
   selectedNodeId?: string | null;
   /** Incrementing counter that asks the canvas to centre on selectedNodeId. */
   centerToken?: number;
+  /** Image-like reading mode: hide the toolbar and the legend, keep a zoomable and
+   * pannable canvas so the member just looks at the chart like an image. */
+  minimal?: boolean;
 }
 
 const noop = (): void => undefined;
@@ -99,6 +102,7 @@ function defautReplie(nodes: OrgContenu["noeuds"]): Set<string> {
 function OrgCanvasInner({
   contenu,
   mode,
+  minimal = false,
   onNodeMoved,
   onEditNode,
   onDeleteNode,
@@ -310,7 +314,8 @@ function OrgCanvasInner({
     <OrgCanvasContext.Provider value={ctxValue}>
       <div className="org-canvas-inner">
         {/* A real toolbar ABOVE the canvas, so tools are always visible and never
-            covered by the cards or hidden behind the flow. */}
+            covered by the cards or hidden behind the flow. Hidden in image mode. */}
+        {!minimal && (
         <div className="org-bar">
           <form
             className="org-search"
@@ -388,6 +393,7 @@ function OrgCanvasInner({
           ) : null}
           {searchMsg ? <span className="org-search-msg">{searchMsg}</span> : null}
         </div>
+        )}
         <div className="org-flow">
           <ReactFlow
             nodes={nodes}
@@ -450,9 +456,11 @@ function OrgCanvasInner({
               nodeColor={() => "#c3cde6"}
               maskColor="rgba(16, 18, 24, 0.08)"
             />
-            <Panel position="top-right">
-              <OrgLegende />
-            </Panel>
+            {!minimal && (
+              <Panel position="top-right">
+                <OrgLegende />
+              </Panel>
+            )}
           </ReactFlow>
         </div>
       </div>

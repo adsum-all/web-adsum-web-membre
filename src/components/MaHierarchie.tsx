@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 
 import {
   getMaHierarchie,
+  getOrganigrammeReglages,
   type HierActeur,
   type HierAppui,
   type HierChaine,
   type HierFonction,
   type HierRattachement,
   type MaHierarchie as MaHierarchieData,
+  type OrganigrammeReglages,
 } from "../api.js";
 import { useLang } from "../i18n.js";
 import { T } from "../proto.js";
@@ -42,6 +44,12 @@ export function MaHierarchie({ token, membreId }: Readonly<{ token: string; memb
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [ouvertes, setOuvertes] = useState<Record<number, boolean>>({ 0: true });
+  // Which tabs the back office made visible, and how the chart is shown. Default until
+  // loaded: only the chain and the org chart (matches the server default).
+  const [reglages, setReglages] = useState<OrganigrammeReglages>({
+    onglets: { chaine: true, rattachements: false, titres: false, organigramme: true },
+    affichage: "interactif",
+  });
 
   useEffect(() => {
     let alive = true;
@@ -50,15 +58,24 @@ export function MaHierarchie({ token, membreId }: Readonly<{ token: string; memb
       .then((d) => alive && setData(d))
       .catch((e) => alive && setError(e instanceof Error ? e.message : "Erreur"))
       .finally(() => alive && setLoading(false));
+    getOrganigrammeReglages(token).then((r) => alive && setReglages(r)).catch(() => undefined);
     return () => { alive = false; };
   }, [token]);
 
-  const ONGLETS: { id: Onglet; label: string }[] = [
+  const TOUS_ONGLETS: { id: Onglet; label: string }[] = [
     { id: "chaine", label: L("Ma chaîne", "My chain") },
     { id: "rattachements", label: L("Mes rattachements", "My attachments") },
     { id: "titres", label: L("Titres et liens", "Titles & links") },
     { id: "organigramme", label: L("Organigramme", "Org chart") },
   ];
+  const ONGLETS = TOUS_ONGLETS.filter((o) => reglages.onglets[o.id]);
+
+  // If the active tab is hidden by the back-office settings, fall back to the first
+  // visible one (the chain is always available).
+  useEffect(() => {
+    if (!reglages.onglets[onglet]) setOnglet(ONGLETS[0]?.id ?? "chaine");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reglages]);
 
   const pp = data?.position_principale ?? null;
 
@@ -79,7 +96,7 @@ export function MaHierarchie({ token, membreId }: Readonly<{ token: string; memb
       </div>
 
       {onglet === "organigramme" ? (
-        <OrganigrammePublieMembre token={token} membreId={membreId} />
+        <OrganigrammePublieMembre token={token} membreId={membreId} affichage={reglages.affichage} />
       ) : loading ? (
         <p style={{ color: T.mut, fontSize: 13, padding: "14px 2px" }}>{L("Chargement…", "Loading…")}</p>
       ) : error ? (
