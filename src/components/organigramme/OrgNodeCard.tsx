@@ -32,9 +32,15 @@ export function OrgNodeCard({ data, selected }: NodeProps<OrgFlowNode>): JSX.Ele
   // and never disappears. A structural unit shows its scope/type instead of an occupant.
   const estPoste = !!node.fonction_cle || node.type_noeud === "personne";
   const vacant = estPoste && (node.statut === "vacant" || !node.membre_nom);
-  const fonctionAffiche = node.nom || node.sous_titre || TYPE_NOEUD_LABEL[node.type_noeud];
-  const perimetre = node.sous_titre && node.sous_titre !== fonctionAffiche ? node.sous_titre : null;
-  const secondaire = estPoste ? (vacant ? "Poste à pourvoir" : node.membre_nom) : perimetre;
+  // FUNCTION-DOMINANT: for a person/post the FUNCTION (sous_titre) is the bold primary
+  // line and the occupant's NAME is the non-bold secondary line. A structural unit that
+  // is not a post keeps its own label primary and shows its scope/count as secondary.
+  const principal = estPoste
+    ? (node.sous_titre || node.nom || TYPE_NOEUD_LABEL[node.type_noeud])
+    : (node.nom || TYPE_NOEUD_LABEL[node.type_noeud]);
+  const secondaire = estPoste
+    ? (vacant ? "Poste à pourvoir" : (node.membre_nom ?? node.nom ?? null))
+    : (node.sous_titre && node.sous_titre !== principal ? node.sous_titre : null);
   const avatarBase = node.membre_nom ?? node.nom;
   const montrerPhoto = node.afficher_photo && !!node.photo_url;
   const style = node.couleur ? ({ "--org-accent": node.couleur } as CSSProperties) : undefined;
@@ -63,14 +69,9 @@ export function OrgNodeCard({ data, selected }: NodeProps<OrgFlowNode>): JSX.Ele
           </span>
         )}
         <span className="org-node-body">
-          <span className="org-node-name" title={fonctionAffiche}>
-            {fonctionAffiche}
+          <span className="org-node-name" title={principal}>
+            {principal}
           </span>
-          {estPoste && perimetre ? (
-            <span className="org-node-sub" title={perimetre}>
-              {perimetre}
-            </span>
-          ) : null}
           {secondaire ? (
             <span className={`org-node-sub ${vacant ? "org-node-sub-vacant" : ""}`} title={secondaire}>
               {secondaire}
