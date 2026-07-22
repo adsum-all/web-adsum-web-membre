@@ -343,7 +343,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
   const requiredOk =
     !!f.prenoms?.trim() && !!f.nom?.trim() && !!f.telephone?.trim() && !!f.indicatif_telephone?.trim() &&
     !!f.date_naissance && !!f.genre && !!f.pays?.trim() && !!f.ville?.trim() && !!f.commission_id && !!f.tribu_id &&
-    axeOk;
+    !!f.date_entree && !!f.situation_matrimoniale && axeOk;
   // A document is required only if it is not already provided, or if it was
   // explicitly flagged for correction.
   const photoOk = photoProvided ? true : !!photoFile;
@@ -369,6 +369,13 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
         return axe === "deux" ? t("completer.errBothAxes") : t("completer.errOneAxis");
       }
       if (!f.tribu_id) return t("completer.errTribu");
+      return null;
+    }
+    if (i === 2) {
+      // The entry date into the organisation is mandatory (community journey), and
+      // the marital situation is a core profile fact: neither is left optional.
+      if (!f.date_entree) return t("completer.errDateEntree");
+      if (!f.situation_matrimoniale) return t("completer.errSituation");
       return null;
     }
     if (i === 3) {
@@ -724,9 +731,21 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           <Field label={t("completer.fCodeMembre")} highlight={hl("code_membre")} info={t("completer.iCodeMembre")}>
             <input style={{ ...inp("code_membre"), textTransform: "uppercase" }} value={f.code_membre ?? ""} onChange={(e) => set("code_membre", e.target.value.toUpperCase())} placeholder={t("completer.phCodeMembre")} maxLength={32} />
           </Field>
-          <Field label={t("completer.fDateEntree")} highlight={hl("date_entree")} info={t("completer.iDateEntree")}>
+          <Field label={t("completer.fDateEntree")} required highlight={hl("date_entree")} info={t("completer.iDateEntree")}>
             <input type="date" style={inp("date_entree")} value={f.date_entree ?? ""} onChange={(e) => set("date_entree", e.target.value)} />
           </Field>
+          {/* Leadership-team SELF-DECLARATION: reviewed and confirmed by the
+              administration (adding a real membership in the special-teams page). The
+              declaration alone never grants anything. */}
+          <Field label={t("completer.fEquipeDirigeante")} highlight={hl("equipe_dirigeante_declaree")} info={t("completer.iEquipeDirigeante")}>
+            <select style={inp("equipe_dirigeante_declaree")} value={f.equipe_dirigeante_declaree ? "oui" : "non"} onChange={(e) => set("equipe_dirigeante_declaree", e.target.value === "oui")}>
+              <option value="non">{t("completer.equipeDirigeanteNon")}</option>
+              <option value="oui">{t("completer.equipeDirigeanteOui")}</option>
+            </select>
+          </Field>
+          {f.equipe_dirigeante_declaree && (
+            <p style={{ fontSize: 11, color: T.warn, margin: "6px 2px 0" }}>{t("completer.equipeDirigeanteAttente")}</p>
+          )}
           <Field label={t("completer.fPromotion")} highlight={hl("promotion")} info={t("completer.iPromotion")}>
             <input style={inp("promotion")} value={f.promotion ?? ""} onChange={(e) => set("promotion", e.target.value)} placeholder={t("completer.phPromotion")} />
           </Field>
@@ -737,7 +756,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           <Field label={t("completer.fComplement")} highlight={hl("adresse_complement")}><input style={inp("adresse_complement")} value={f.adresse_complement ?? ""} onChange={(e) => set("adresse_complement", e.target.value)} placeholder={t("completer.phComplement")} /></Field>
 
           <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "18px 2px 2px" }}>{t("completer.secVie")}</p>
-          <Field label={t("completer.fSituation")} highlight={hl("situation_matrimoniale")}>
+          <Field label={t("completer.fSituation")} required highlight={hl("situation_matrimoniale")}>
             <select
               style={inp("situation_matrimoniale")}
               value={f.situation_matrimoniale ?? ""}

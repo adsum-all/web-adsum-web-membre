@@ -266,8 +266,7 @@ export function Infos({
         <Row label={t("app.profil.tribu")} value={profile?.tribu ?? "-"} />
         <Row label={t("infos.rowPatriarche")} value={profile?.patriarche ?? "-"} />
         <Row label={t("infos.rowNiveauEngagement")} value={engagement} />
-        <Row label={t("infos.rowPromotion")} value={profile?.promotion ?? "-"} />
-        <Row label={t("infos.rowCheminement")} value={pretty(profile?.cheminement_pastoral)} last />
+        <Row label={t("infos.rowPromotion")} value={profile?.promotion ?? "-"} last />
       </Group>
 
       <Group title={t("infos.groupVie")}>

@@ -36,6 +36,7 @@ export interface MembreProfile {
   est_berger: boolean;
   berger_declare: boolean;
   berger_nom_declare: string | null;
+  equipe_dirigeante_declaree?: boolean;
   nom_pastoral: string | null;
   nom_pastoral_affiche: string | null;
   fonction_perimetre: string | null;
@@ -1386,6 +1387,7 @@ export interface ProfilFields {
   promotion?: string;
   berger_declare?: boolean;
   berger_nom_declare?: string;
+  equipe_dirigeante_declaree?: boolean;
   type_membre?: string;
   fonction_cle?: string;
   // Four-block registration declarations (special functions, functions, particular
