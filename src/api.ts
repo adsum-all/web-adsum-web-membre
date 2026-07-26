@@ -587,6 +587,45 @@ export async function revokeAppareilConfiance(token: string, id: string): Promis
   if (!res.ok) throw new ApiError(apiMsg("Révocation impossible pour le moment.", "Revocation not possible right now."), res.status);
 }
 
+export interface ConnexionSession {
+  id: string;
+  courante: boolean;
+  ouverte: boolean;
+  appareil: string | null;
+  adresse: string | null;
+  lieu: string | null;
+  ouverte_le: string | null;
+  fermee_le: string | null;
+  revoquee: boolean;
+}
+
+export interface ConnexionsPage {
+  items: ConnexionSession[];
+  total: number;
+  page: number;
+  taille: number;
+  pages: number;
+  ouvertes: number;
+  autres_ouvertes: number;
+}
+
+export async function getConnexions(token: string, page = 1, taille = 10): Promise<ConnexionsPage> {
+  const res = await fetch(`${BASE}/api/v1/membres/me/connexions?page=${page}&taille=${taille}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new ApiError(apiMsg("Impossible de charger l'historique des connexions.", "Could not load the connection history."), res.status);
+  return (await res.json()) as ConnexionsPage;
+}
+
+export async function fermerAutresConnexions(token: string): Promise<{ fermees: number }> {
+  const res = await fetch(`${BASE}/api/v1/membres/me/connexions/fermer-autres`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new ApiError(apiMsg("Fermeture impossible pour le moment.", "Could not close the other sessions right now."), res.status);
+  return (await res.json()) as { fermees: number };
+}
+
 export async function premiereConnexion(
   email: string,
   mdpTemporaire: string,
@@ -1022,6 +1061,30 @@ export function setLangue(token: string, langue: "fr" | "en"): Promise<{ ok: boo
 
 export function setTheme(token: string, theme: "light" | "dark" | "system"): Promise<{ ok: boolean; theme: string }> {
   return authedPut("/api/v1/membres/me/theme", token, { theme }, apiMsg("Changement de thème impossible", "Could not change theme"));
+}
+
+export interface TelegramEtat {
+  disponible: boolean;
+  liee: boolean;
+  en_attente_de_code: boolean;
+  secondes_restantes: number;
+  essais_restants: number;
+  lien_demande: boolean;
+}
+
+export async function getTelegramEtat(token: string): Promise<TelegramEtat> {
+  const res = await fetch(`${BASE}/api/v1/membres/me/telegram`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new ApiError(apiMsg("Impossible de lire l'état de la liaison Telegram.", "Could not read the Telegram link status."), res.status);
+  return (await res.json()) as TelegramEtat;
+}
+
+export async function delierTelegram(token: string): Promise<{ liee: boolean }> {
+  const res = await fetch(`${BASE}/api/v1/membres/me/telegram`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new ApiError(apiMsg("Déliaison impossible pour le moment.", "Could not unlink right now."), res.status);
+  return (await res.json()) as { liee: boolean };
 }
 
 export function telegramLien(token: string): Promise<{ deep_link: string }> {
