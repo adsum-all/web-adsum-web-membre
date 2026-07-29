@@ -495,3 +495,17 @@
   .org-flow .react-flow__minimap { display: none; }
   .org-flow .react-flow__controls { transform: scale(0.92); transform-origin: bottom left; }
 }
+
+/* Holder line of a post: its own zone, distinct from the unit name and from the
+   function. An unfilled post says so here, while the unit keeps its real name. */
+.org-node-holder {
+  font-size: 12px;
+  color: var(--adsum-txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.org-node-holder-vide {
+  color: #b6791b;
+  font-style: italic;
+}

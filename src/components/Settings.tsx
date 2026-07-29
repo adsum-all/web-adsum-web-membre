@@ -17,13 +17,12 @@ import {
   setMfaCanal,
   setNotifPreferences,
   setTheme,
-  telegramConfirmer,
-  telegramLien,
-  telegramVerifier,
 } from "../api.js";
 import { type Lang, useT } from "../i18n.js";
 import { T } from "../proto.js";
+import { LiaisonTelegram } from "./LiaisonTelegram.js";
 import { PasswordInput } from "./PasswordInput.js";
+import { SecuriteConnexions } from "./SecuriteConnexions.js";
 
 function Toggle({ label, hint, on, onChange }: { label: string; hint?: string; on: boolean; onChange: (v: boolean) => void }): JSX.Element {
   return (
@@ -318,6 +317,13 @@ export function Settings({
       <p style={{ fontFamily: T.fm, fontSize: 9, color: T.mut, margin: "16px 0 4px" }}>{t("settings.channels")}</p>
       <Canaux token={token} prefs={prefs} onPref={togglePref} onMsg={setMsg} />
 
+      {/* Security sits here, immediately before the data section: it used to be a
+          separate "Sécurité et connexion" entry in the profile that repeated what
+          this page already held (password, two-factor). Only the sessions were
+          genuinely its own, so that is what moved. */}
+      <p style={{ fontFamily: T.fm, fontSize: 9, color: T.mut, margin: "16px 0 4px" }}>{t("settings.securitySection")}</p>
+      <SecuriteConnexions token={token} />
+
       <p style={{ fontFamily: T.fm, fontSize: 9, color: T.mut, margin: "16px 0 4px" }}>{t("settings.data")}</p>
       <Row label={t("settings.export")} hint={t("settings.exportHint")} onClick={() => void exportData()} />
       <Row label={t("settings.delete")} hint={t("settings.deleteHint")} onClick={() => void requestDeletion()} />
@@ -593,67 +599,10 @@ function Canaux({
   onMsg: (m: { kind: "ok" | "err"; text: string }) => void;
 }): JSX.Element {
   const t = useT();
-  const [deepLink, setDeepLink] = useState<string | null>(null);
-  const [awaitingCode, setAwaitingCode] = useState(false);
-  const [code, setCode] = useState("");
   const [wa, setWa] = useState("");
   const [busy, setBusy] = useState(false);
-  const [linkedNow, setLinkedNow] = useState(false);
-  const telegramLie = (prefs?.telegram_lie ?? false) || linkedNow;
+  const [, setLinkedNow] = useState(false);
 
-  async function lierTelegram(): Promise<void> {
-    setBusy(true);
-    try {
-      const r = await telegramLien(token);
-      setDeepLink(r.deep_link);
-      setAwaitingCode(false);
-      setCode("");
-      window.open(r.deep_link, "_blank", "noopener");
-    } catch {
-      onMsg({ kind: "err", text: t("settings.msgTelegramNotConfigured") });
-    } finally {
-      setBusy(false);
-    }
-  }
-  // Step 1: capture the chat and ask the bot to send a confirmation code TO it.
-  async function verifierTelegram(): Promise<void> {
-    setBusy(true);
-    try {
-      const r = await telegramVerifier(token);
-      if (r.pending_confirmation) {
-        setAwaitingCode(true);
-        onMsg({ kind: "ok", text: r.message ?? t("settings.telegramCodeSent") });
-      } else {
-        onMsg({ kind: "err", text: r.message ?? t("settings.msgTelegramNotDetected") });
-      }
-    } catch {
-      // The bot may be unreachable (502) or unconfigured (503): tell the member
-      // instead of silently un-busying the button as if nothing happened.
-      onMsg({ kind: "err", text: t("settings.telegramVerifyError") });
-    } finally {
-      setBusy(false);
-    }
-  }
-  // Step 2: the member re-enters the code the bot sent, proving they control the chat.
-  async function confirmerTelegram(): Promise<void> {
-    if (!code.trim()) return;
-    setBusy(true);
-    try {
-      const r = await telegramConfirmer(token, code.trim());
-      if (r.linked) {
-        setLinkedNow(true);
-        onPref("telegram", true);
-        setDeepLink(null);
-        setAwaitingCode(false);
-        setCode("");
-        onMsg({ kind: "ok", text: t("settings.msgTelegramLinked") });
-      }
-    } catch {
-      onMsg({ kind: "err", text: t("settings.telegramCodeInvalid") });
-    } finally {
-      setBusy(false);
-    }
-  }
   async function saveWa(): Promise<void> {
     if (!wa.trim()) return;
     setBusy(true);
@@ -670,43 +619,7 @@ function Canaux({
 
   return (
     <>
-      <div style={{ padding: "12px 0", borderBottom: `1px solid ${T.line}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600 }}>{t("settings.telegram")}</div>
-            <div style={{ fontSize: 10, color: T.mut }}>{t("settings.telegramHint")}</div>
-          </div>
-          <div
-            onClick={() => void lierTelegram()}
-            className="tap"
-            style={{ padding: "8px 14px", borderRadius: 10, background: telegramLie ? T.okbg : T.b600, color: telegramLie ? T.ok : "#fff", fontSize: 12, fontWeight: 600, opacity: busy ? 0.6 : 1 }}
-          >
-            {telegramLie ? t("settings.linked") : t("settings.link")}
-          </div>
-        </div>
-        {deepLink && !awaitingCode && (
-          <div onClick={() => void verifierTelegram()} className="tap" style={{ marginTop: 8, textAlign: "center", padding: "9px", borderRadius: 10, border: `1px solid ${T.b600}`, color: T.b600, fontSize: 12, fontWeight: 600 }}>
-            {t("settings.telegramVerify")}
-          </div>
-        )}
-        {awaitingCode && (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 10.5, color: T.mut, marginBottom: 6 }}>{t("settings.telegramCodeHint")}</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                inputMode="numeric"
-                placeholder="000000"
-                style={{ flex: 1, height: 40, border: `1px solid ${T.line}`, borderRadius: 10, padding: "0 12px", fontSize: 15, letterSpacing: 3, textAlign: "center" }}
-              />
-              <div onClick={() => void confirmerTelegram()} className="tap" style={{ padding: "0 16px", height: 40, display: "flex", alignItems: "center", borderRadius: 10, background: T.b600, color: "#fff", fontSize: 12, fontWeight: 600, opacity: busy || code.length < 6 ? 0.6 : 1 }}>
-                {t("settings.telegramConfirm")}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      <LiaisonTelegram token={token} onLie={(v) => { setLinkedNow(v); onPref("telegram", v); }} onMsg={onMsg} />
 
       <div style={{ padding: "12px 0", borderBottom: `1px solid ${T.line}` }}>
         <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>{t("settings.whatsapp")}</div>
@@ -717,7 +630,7 @@ function Canaux({
             placeholder="+225 07 00 00 00 00"
             style={{ flex: 1, height: 40, border: `1px solid ${T.line}`, borderRadius: 10, padding: "0 12px", fontSize: 13 }}
           />
-          <div onClick={() => void saveWa()} className="tap" style={{ padding: "0 16px", height: 40, display: "flex", alignItems: "center", borderRadius: 10, background: T.b600, color: "#fff", fontSize: 12, fontWeight: 600 }}>
+          <div onClick={() => (busy ? undefined : void saveWa())} className="tap" style={{ padding: "0 16px", height: 40, display: "flex", alignItems: "center", borderRadius: 10, background: T.b600, color: "#fff", fontSize: 12, fontWeight: 600, opacity: busy ? 0.6 : 1 }}>
             {prefs?.whatsapp ? t("settings.whatsappEdit") : t("settings.whatsappAdd")}
           </div>
         </div>
