@@ -33,6 +33,7 @@ import { Demandes } from "./components/Demandes.js";
 import { Engage } from "./components/Engage.js";
 import { Forgot } from "./components/Forgot.js";
 import { Informations } from "./components/Informations.js";
+import { Documents } from "./components/Documents.js";
 import { MonDossier } from "./components/MonDossier.js";
 import { Infos } from "./components/Infos.js";
 import { type AuthContext, Login } from "./components/Login.js";
@@ -48,6 +49,7 @@ import { TabBar, type TabId } from "./components/TabBar.js";
 
 type ViewId =
   | "dossier"
+  | "documents"
   | "suivi"
   | "detail"
   | "engage"
@@ -65,6 +67,7 @@ type ViewId =
 /** i18n key of each screen title, resolved through the translator at render. */
 const VIEW_TITLES: Record<ViewId, string> = {
   dossier: "profilNav.dossier.title",
+  documents: "profilNav.documents.title",
   suivi: "app.viewTitle.suivi",
   detail: "app.viewTitle.detail",
   engage: "app.viewTitle.engage",
@@ -576,6 +579,8 @@ export function App(): JSX.Element {
       <main className="screen">
         {view === "dossier" ? (
           <MonDossier token={token} profile={profile} onEngagements={() => setView("engage")} onSuivi={() => setView("suivi")} />
+        ) : view === "documents" ? (
+          <Documents token={token} />
         ) : view === "suivi" ? (
           <Suivi token={token} profile={profile} />
         ) : view === "engage" ? (
@@ -662,6 +667,7 @@ export function App(): JSX.Element {
                 profile={profile}
                 onRecensement={() => setRecensementOpen(true)}
                 onDossier={() => setView("dossier")}
+                onDocuments={() => setView("documents")}
                 onSettings={() => setView("settings")}
                 onInfos={() => setView("infos")}
                 onDemandes={() => openDemandes(null)}
@@ -876,6 +882,7 @@ function Profil({
   profile,
   onRecensement,
   onDossier,
+  onDocuments,
   onSettings,
   onInfos,
   onDemandes,
@@ -888,6 +895,7 @@ function Profil({
   profile: MembreProfile | null;
   onRecensement: () => void;
   onDossier: () => void;
+  onDocuments: () => void;
   onSettings: () => void;
   onInfos: () => void;
   onDemandes: () => void;
@@ -986,6 +994,7 @@ function Profil({
       <NavRow glyph="✉" title={t("profilNav.demandes.title")} subtitle={t("profilNav.demandes.sub")} onClick={onDemandes} badge={demandesBadge} />
       <NavRow glyph="🗳" title={t("profilNav.consultations.title")} subtitle={t("profilNav.consultations.sub")} onClick={onConsultations} />
       <NavRow glyph="🗎" title={t("profilNav.dossier.title")} subtitle={t("profilNav.dossier.sub")} onClick={onDossier} accent={verified} />
+      <NavRow glyph="☷" title={t("profilNav.documents.title")} subtitle={t("profilNav.documents.sub")} onClick={onDocuments} />
       <NavRow glyph="▦" title={t("profilNav.apps.title")} subtitle={t("profilNav.apps.sub")} onClick={onMesApplications} />
       <NavRow glyph="⋔" title={t("profilNav.hierarchie.title")} subtitle={t("profilNav.hierarchie.desc")} onClick={onHierarchie} />
       <NavRow glyph="⚙" title={t("profilNav.settings.title")} subtitle={t("profilNav.settings.sub")} onClick={onSettings} />

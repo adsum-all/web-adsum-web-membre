@@ -1759,3 +1759,37 @@ export function uploadAttestation(token: string, documentId: string): Promise<At
 export function apiBaseUrl(): string {
   return BASE;
 }
+
+/** An institutional document published for the members: statutes, rules, a charter.
+ *  Only the published version is served; earlier ones stay readable in the back
+ *  office, which is what makes a signature verifiable after the fact. */
+export interface DocumentBibliotheque {
+  id: string;
+  cle: string;
+  categorie: string;
+  titre: string;
+  titre_en: string | null;
+  description: string | null;
+  version: number;
+  version_id: string;
+  contenu: string | null;
+  contenu_en: string | null;
+  fichier: { nom: string | null; mime: string | null; taille: number | null } | null;
+  publie_le: string | null;
+}
+
+export async function getBibliothequeMembre(token: string): Promise<DocumentBibliotheque[]> {
+  const res = await fetch(`${BASE}/api/v1/membres/me/bibliotheque`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new ApiError(apiMsg("Documents indisponibles pour le moment.", "Documents unavailable right now."), res.status);
+  return ((await res.json()) as { items: DocumentBibliotheque[] }).items;
+}
+
+export async function getFichierBibliotheque(token: string, versionId: string): Promise<{ url: string; nom: string | null }> {
+  const res = await fetch(`${BASE}/api/v1/membres/me/bibliotheque/${versionId}/fichier`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new ApiError(apiMsg("Fichier indisponible.", "File unavailable."), res.status);
+  return (await res.json()) as { url: string; nom: string | null };
+}

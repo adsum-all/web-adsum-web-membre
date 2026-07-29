@@ -390,6 +390,8 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "profilNav.consultations.title": { fr: "Consultations", en: "Consultations" },
   "profilNav.consultations.sub": { fr: "Sondages et confirmations de présence", en: "Surveys and attendance confirmations" },
   "profilNav.dossier.title": { fr: "Mon dossier", en: "My file" },
+  "profilNav.documents.title": { fr: "Documents de l’organisation", en: "Organisation documents" },
+  "profilNav.documents.sub": { fr: "Statuts, règlement, chartes, en vigueur", en: "Statutes, rules and charters in force" },
   "profilNav.dossier.sub": { fr: "Pièces d’identité, engagements, suivi du traitement", en: "Identity pieces, commitments, processing status" },
   "profilNav.settings.title": { fr: "Paramètres", en: "Settings" },
   "profilNav.settings.sub": { fr: "Langue, notifications, RGPD", en: "Language, notifications, GDPR" },
