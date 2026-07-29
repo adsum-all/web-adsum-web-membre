@@ -29,18 +29,17 @@ import { ActionBanner } from "./components/ActionBanner.js";
 import { BandeauPrioritaire } from "./components/BandeauPrioritaire.js";
 import { Consultations } from "./components/Consultations.js";
 import { Document } from "./components/Document.js";
-import { Dossier } from "./components/Dossier.js";
 import { Demandes } from "./components/Demandes.js";
 import { Engage } from "./components/Engage.js";
 import { Forgot } from "./components/Forgot.js";
 import { Informations } from "./components/Informations.js";
-import { Identite } from "./components/Identite.js";
+import { Documents } from "./components/Documents.js";
+import { MonDossier } from "./components/MonDossier.js";
 import { Infos } from "./components/Infos.js";
 import { type AuthContext, Login } from "./components/Login.js";
 import { PremiereConnexion } from "./components/PremiereConnexion.js";
 import { CentreNotifications } from "./components/CentreNotifications.js";
 import { Recensement } from "./components/Recensement.js";
-import { Secu } from "./components/Secu.js";
 import { Session } from "./components/Session.js";
 import { MaHierarchie } from "./components/MaHierarchie.js";
 import { MesApplications } from "./components/MesApplications.js";
@@ -49,13 +48,13 @@ import { Suivi } from "./components/Suivi.js";
 import { TabBar, type TabId } from "./components/TabBar.js";
 
 type ViewId =
-  | "identite"
+  | "dossier"
+  | "documents"
   | "suivi"
   | "detail"
   | "engage"
   | "document"
   | "settings"
-  | "secu"
   | "session"
   | "sent"
   | "infos"
@@ -67,13 +66,13 @@ type ViewId =
 
 /** i18n key of each screen title, resolved through the translator at render. */
 const VIEW_TITLES: Record<ViewId, string> = {
-  identite: "profilNav.identite.title",
+  dossier: "profilNav.dossier.title",
+  documents: "profilNav.documents.title",
   suivi: "app.viewTitle.suivi",
   detail: "app.viewTitle.detail",
   engage: "app.viewTitle.engage",
   document: "app.viewTitle.document",
   settings: "settings.title",
-  secu: "profilNav.secu.title",
   session: "app.viewTitle.session",
   sent: "app.viewTitle.sent",
   infos: "profilNav.infos.title",
@@ -120,7 +119,6 @@ export function App(): JSX.Element {
   const [tab, setTab] = useState<TabId>(() => tabFromHash());
   const [notifOpen, setNotifOpen] = useState(false);
   const [recensementOpen, setRecensementOpen] = useState(false);
-  const [dossierOpen, setDossierOpen] = useState(false);
   const [view, setView] = useState<ViewId | null>(null);
   const [activeEvent, setActiveEvent] = useState<EvenementOut | null>(null);
   const [authView, setAuthView] = useState<"login" | "forgot">("login");
@@ -331,7 +329,6 @@ export function App(): JSX.Element {
     setDemandeFocus(focusId);
     setNotifOpen(false);
     setRecensementOpen(false);
-    setDossierOpen(false);
     setView("demandes");
   }, []);
 
@@ -511,11 +508,9 @@ export function App(): JSX.Element {
               ? t(VIEW_TITLES[view])
               : recensementOpen
                 ? t("app.title.recensement")
-                : dossierOpen
-                  ? t("profilNav.dossier.title")
-                  : notifOpen
-                    ? t("app.title.notifications")
-                    : tabTitle(tab, t)}
+                : notifOpen
+                  ? t("app.title.notifications")
+                  : tabTitle(tab, t)}
           </span>
           {view ? (
             <button
@@ -528,18 +523,17 @@ export function App(): JSX.Element {
                   setDemandeFocus(null);
                   refreshActions();
                 }
-                setView(view === "suivi" || view === "engage" ? "identite" : null);
+                setView(view === "suivi" || view === "engage" ? "dossier" : null);
               }}
             >
               {t("common.close")}
             </button>
-          ) : recensementOpen || dossierOpen ? (
+          ) : recensementOpen ? (
             <button
               type="button"
               className="bell"
               onClick={() => {
                 setRecensementOpen(false);
-                setDossierOpen(false);
               }}
             >
               {t("common.close")}
@@ -583,12 +577,14 @@ export function App(): JSX.Element {
         </header>
       )}
       <main className="screen">
-        {view === "identite" ? (
-          <Identite token={token} profile={profile} onEngagements={() => setView("engage")} onSuivi={() => setView("suivi")} />
+        {view === "dossier" ? (
+          <MonDossier token={token} profile={profile} onEngagements={() => setView("engage")} onSuivi={() => setView("suivi")} />
+        ) : view === "documents" ? (
+          <Documents token={token} />
         ) : view === "suivi" ? (
           <Suivi token={token} profile={profile} />
         ) : view === "engage" ? (
-          <Engage token={token} onDone={() => setView("identite")} />
+          <Engage token={token} onDone={() => setView("dossier")} />
         ) : view === "document" ? (
           <Document token={token} onSent={() => setView("suivi")} />
         ) : view === "settings" ? (
@@ -603,8 +599,6 @@ export function App(): JSX.Element {
           <MesApplications token={token} />
         ) : view === "hierarchie" ? (
           <MaHierarchie token={token} membreId={profile?.id ?? null} />
-        ) : view === "secu" ? (
-          <Secu token={token} onSettings={() => setView("settings")} />
         ) : view === "session" && activeEvent ? (
           <Session
             token={token}
@@ -620,8 +614,6 @@ export function App(): JSX.Element {
           />
         ) : recensementOpen ? (
           <Recensement token={token} />
-        ) : dossierOpen ? (
-          <Dossier token={token} />
         ) : notifOpen ? (
           <CentreNotifications
             token={token}
@@ -674,9 +666,8 @@ export function App(): JSX.Element {
                 token={token}
                 profile={profile}
                 onRecensement={() => setRecensementOpen(true)}
-                onDossier={() => setDossierOpen(true)}
-                onIdentite={() => setView("identite")}
-                onSecu={() => setView("secu")}
+                onDossier={() => setView("dossier")}
+                onDocuments={() => setView("documents")}
                 onSettings={() => setView("settings")}
                 onInfos={() => setView("infos")}
                 onDemandes={() => openDemandes(null)}
@@ -697,7 +688,6 @@ export function App(): JSX.Element {
           onChange={(t) => {
             setNotifOpen(false);
             setRecensementOpen(false);
-            setDossierOpen(false);
             setView(null);
             setActiveEvent(null);
             setTab(t);
@@ -892,8 +882,7 @@ function Profil({
   profile,
   onRecensement,
   onDossier,
-  onIdentite,
-  onSecu,
+  onDocuments,
   onSettings,
   onInfos,
   onDemandes,
@@ -906,8 +895,7 @@ function Profil({
   profile: MembreProfile | null;
   onRecensement: () => void;
   onDossier: () => void;
-  onIdentite: () => void;
-  onSecu: () => void;
+  onDocuments: () => void;
   onSettings: () => void;
   onInfos: () => void;
   onDemandes: () => void;
@@ -1002,14 +990,13 @@ function Profil({
         ))}
       </div>
 
-      <NavRow glyph="✓" title={t("profilNav.identite.title")} subtitle={t("profilNav.identite.sub")} onClick={onIdentite} accent={verified} />
       <NavRow glyph="≣" title={t("profilNav.infos.title")} subtitle={t("profilNav.infos.sub")} onClick={onInfos} />
       <NavRow glyph="✉" title={t("profilNav.demandes.title")} subtitle={t("profilNav.demandes.sub")} onClick={onDemandes} badge={demandesBadge} />
       <NavRow glyph="🗳" title={t("profilNav.consultations.title")} subtitle={t("profilNav.consultations.sub")} onClick={onConsultations} />
-      <NavRow glyph="🗎" title={t("profilNav.dossier.title")} subtitle={t("profilNav.dossier.sub")} onClick={onDossier} />
+      <NavRow glyph="🗎" title={t("profilNav.dossier.title")} subtitle={t("profilNav.dossier.sub")} onClick={onDossier} accent={verified} />
+      <NavRow glyph="☷" title={t("profilNav.documents.title")} subtitle={t("profilNav.documents.sub")} onClick={onDocuments} />
       <NavRow glyph="▦" title={t("profilNav.apps.title")} subtitle={t("profilNav.apps.sub")} onClick={onMesApplications} />
       <NavRow glyph="⋔" title={t("profilNav.hierarchie.title")} subtitle={t("profilNav.hierarchie.desc")} onClick={onHierarchie} />
-      <NavRow glyph="🔒" title={t("profilNav.secu.title")} subtitle={t("profilNav.secu.sub")} onClick={onSecu} />
       <NavRow glyph="⚙" title={t("profilNav.settings.title")} subtitle={t("profilNav.settings.sub")} onClick={onSettings} />
       <NavRow glyph="↻" title={t("profilNav.recensement.title")} subtitle={t("profilNav.recensement.sub")} onClick={onRecensement} />
     </div>
