@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { ApiError, login, loginVerify, requestLoginCode } from "../api.js";
 import { useT } from "../i18n.js";
+import { T } from "../proto.js";
 import { PasswordInput } from "./PasswordInput.js";
 
 export interface AuthContext {
@@ -14,11 +15,14 @@ export interface AuthContext {
 interface LoginProps {
   onAuth: (ctx: AuthContext) => void;
   onForgot?: () => void;
+  /** Why the previous session ended, so coming back here is explained rather than
+   *  abrupt. Absent on a first sign-in. */
+  avis?: string;
 }
 
 type Methode = "email" | "matricule" | "code";
 
-export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
+export function Login({ onAuth, onForgot, avis }: LoginProps): JSX.Element {
   const t = useT();
   // The identifier field carries the e-mail (default), the ADSUM matricule, or the
   // member code, depending on the chosen method. The server resolves all three.
@@ -96,6 +100,18 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
       </div>
       <div className="login-brand">ADSUM</div>
       <p className="login-sub">{t("login.tagline")}</p>
+
+      {avis && (
+        <p
+          style={{
+            fontSize: 11.5, lineHeight: 1.5, color: T.mut, background: T.surf,
+            border: `1px solid ${T.line}`, borderRadius: 11, padding: "10px 12px",
+            margin: "2px 0 6px", textAlign: "center",
+          }}
+        >
+          {avis}
+        </p>
+      )}
 
       {step === "password" ? (
         <form onSubmit={submitPassword} className="login-form">

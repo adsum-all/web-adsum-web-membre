@@ -17,6 +17,7 @@ import {
   photoObjectPosition,
   setFuseau,
 } from "./api.js";
+import { type RaisonFin, messageFinDeSession, surFinDeSession } from "./sessionExpiree.js";
 import { type Lang, LangContext, tr, useT } from "./i18n.js";
 import { clearApiCache, useOnline } from "./offline.js";
 import { civilName, initials as memberInitials } from "./name.js";
@@ -122,6 +123,9 @@ export function App(): JSX.Element {
   const [view, setView] = useState<ViewId | null>(null);
   const [activeEvent, setActiveEvent] = useState<EvenementOut | null>(null);
   const [authView, setAuthView] = useState<"login" | "forgot">("login");
+  // Why the last session ended, shown on the sign-in screen so the return is
+  // explained instead of abrupt.
+  const [finDeSession, setFinDeSession] = useState<RaisonFin | null>(null);
   const [firstLogin, setFirstLogin] = useState<AuthContext | null>(null);
   const [inscription, setInscription] = useState<InscriptionStatut | null>(null);
   const [inscriptionError, setInscriptionError] = useState(false);
@@ -303,10 +307,28 @@ export function App(): JSX.Element {
         setFirstLogin(ctx);
         return;
       }
+      setFinDeSession(null);
       enter(ctx.token);
     },
     [enter],
   );
+
+  // The server said the session is over. Every screen used to show this as a red
+  // "Session expirée" banner on a page that no longer worked, which reads as a defect
+  // rather than the ordinary end of a session. The member comes back to sign in, and
+  // the screen says why.
+  useEffect(() => surFinDeSession((raison) => {
+    clearApiCache();
+    saveToken(null);
+    setToken(null);
+    setProfile(null);
+    setView(null);
+    setFirstLogin(null);
+    setInscription(null);
+    setActions(null);
+    setAuthView("login");
+    setFinDeSession(raison);
+  }), []);
 
   const logout = useCallback(() => {
     if (token) void logoutSession(token).catch(() => undefined);
@@ -388,7 +410,11 @@ export function App(): JSX.Element {
         {authView === "forgot" ? (
           <Forgot onBack={() => setAuthView("login")} onDone={() => setAuthView("login")} />
         ) : (
-          <Login onAuth={onAuth} onForgot={() => setAuthView("forgot")} />
+          <Login
+            onAuth={onAuth}
+            onForgot={() => setAuthView("forgot")}
+            avis={finDeSession ? messageFinDeSession(finDeSession) : undefined}
+          />
         )}
       </Shell>
     );

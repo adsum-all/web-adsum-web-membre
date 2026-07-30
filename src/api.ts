@@ -2,6 +2,7 @@
 // point at the deployed API (https://adsum-api.vercel.app) or a local one.
 
 import { computePhash } from "./phash.js";
+import { signalerFinDeSession } from "./sessionExpiree.js";
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "https://adsum-api.vercel.app";
 
@@ -423,11 +424,21 @@ async function readDetail(res: Response): Promise<unknown> {
   }
 }
 
+/** Tell the application shell the session is over, with the reason the server gives.
+ *  Called from every authenticated helper: a member left on a screen that no longer
+ *  works, with a red "Session expirée" banner, reads as a defect rather than the
+ *  ordinary end of a session. */
+function reporterFinDeSession(res: Response): void {
+  const motif = res.headers.get("X-Session-Fin");
+  signalerFinDeSession(motif === "inactivite" ? "inactivite" : motif === "revoquee" ? "revoquee" : "expiree");
+}
+
 async function authedGet<T>(path: string, token: string, onError: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
+    if (res.status === 401) reporterFinDeSession(res);
     throw new ApiError(res.status === 401 ? apiMsg("Session expirée", "Session expired") : onError, res.status);
   }
   return (await res.json()) as T;
@@ -1239,6 +1250,7 @@ async function authedPost<T>(path: string, token: string, body: unknown, onError
   });
   if (!res.ok) {
     const detail = await readDetail(res);
+    if (res.status === 401) reporterFinDeSession(res);
     throw new ApiError(res.status === 400 ? apiMsg("Requête invalide", "Invalid request") : res.status === 401 ? apiMsg("Session expirée", "Session expired") : onError, res.status, detail);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
@@ -1480,6 +1492,7 @@ async function authedPatch<T>(path: string, token: string, body: unknown, onErro
     body: JSON.stringify(body),
   });
   if (!res.ok) {
+    if (res.status === 401) reporterFinDeSession(res);
     throw new ApiError(res.status === 401 ? apiMsg("Session expirée", "Session expired") : onError, res.status);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
@@ -1493,6 +1506,7 @@ async function authedPut<T>(path: string, token: string, body: unknown, onError:
   });
   if (!res.ok) {
     const detail = await readDetail(res);
+    if (res.status === 401) reporterFinDeSession(res);
     throw new ApiError(res.status === 401 ? apiMsg("Session expirée", "Session expired") : onError, res.status, detail);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
@@ -1728,6 +1742,7 @@ export async function submitRecensement(
     body: JSON.stringify(reponse),
   });
   if (!res.ok) {
+    if (res.status === 401) reporterFinDeSession(res);
     throw new ApiError(res.status === 401 ? apiMsg("Session expirée", "Session expired") : apiMsg("Envoi impossible", "Sending failed"), res.status);
   }
 }
