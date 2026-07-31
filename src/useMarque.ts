@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { type MarquePublique, getMarquePublique } from "./api.js";
+import { appliquerCouleurMarque } from "./paletteMarque.js";
 
 /**
  * The organisation's identity, fetched once and remembered.
@@ -24,12 +25,29 @@ const DEFAUT: MarquePublique = {
   site: null,
   couleur: "#2a4fad",
   couleur_sombre: "#1d3470",
+  mots: {},
 };
+
+/** One term in the organisation's words, with the shipped word as the fallback.
+ *  Called from a screen that needs a label: mot(m, "tribu", "Pluriel"). */
+export function mot(
+  marque: MarquePublique,
+  terme: string,
+  facette: "singulier" | "pluriel" | "article" | "Singulier" | "Pluriel" | "avec_article" = "singulier",
+  repli = "",
+): string {
+  const m = marque.mots?.[terme];
+  return (m ? m[facette] : "") || repli || terme;
+}
 
 function charger(): MarquePublique {
   try {
     const brut = typeof localStorage !== "undefined" ? localStorage.getItem(CLE) : null;
-    return brut ? { ...DEFAUT, ...(JSON.parse(brut) as Partial<MarquePublique>) } : DEFAUT;
+    const m = brut ? { ...DEFAUT, ...(JSON.parse(brut) as Partial<MarquePublique>) } : DEFAUT;
+    // Applied before the first render: the palette was fetched and then never used,
+    // so an organisation saw its colour in its e-mails and nowhere in the interface.
+    appliquerCouleurMarque(m.couleur, m.couleur_sombre);
+    return m;
   } catch {
     return DEFAUT;
   }
@@ -43,6 +61,7 @@ export function useMarque(): MarquePublique {
     void getMarquePublique()
       .then((m) => {
         if (!vivant) return;
+        appliquerCouleurMarque(m.couleur, m.couleur_sombre);
         setMarque(m);
         try {
           localStorage.setItem(CLE, JSON.stringify(m));

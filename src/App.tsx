@@ -18,7 +18,7 @@ import {
   setFuseau,
 } from "./api.js";
 import { type RaisonFin, messageFinDeSession, surFinDeSession } from "./sessionExpiree.js";
-import { useMarque } from "./useMarque.js";
+import { mot, useMarque } from "./useMarque.js";
 import { type Lang, LangContext, tr, useT } from "./i18n.js";
 import { clearApiCache, useOnline } from "./offline.js";
 import { civilName, initials as memberInitials } from "./name.js";
@@ -933,6 +933,7 @@ function Profil({
   demandesBadge?: number;
 }): JSX.Element {
   const t = useT();
+  const marqueProfil = useMarque();
   const fullName =
     profile && (profile.prenoms || profile.nom || profile.nom_affichage)
       ? civilName(profile)
@@ -1004,8 +1005,10 @@ function Profil({
 
       <div style={{ background: T.surf, border: `1px solid ${T.line}`, borderRadius: 14, overflow: "hidden", margin: "4px 0 16px" }}>
         {[
-          [t("app.profil.commission"), profile?.commission ?? "-"],
-          [t("app.profil.tribu"), profile?.tribu ?? "-"],
+          // Named with the organisation's own words: a parish says secteur where
+          // this one says commission, and the label must follow the data.
+          [mot(marqueProfil, "commission", "Singulier", t("app.profil.commission")), profile?.commission ?? "-"],
+          [mot(marqueProfil, "tribu", "Singulier", t("app.profil.tribu")), profile?.tribu ?? "-"],
           [t("app.profil.since"), since ? String(since) : "-"],
         ].map(([label, value], i) => (
           <div

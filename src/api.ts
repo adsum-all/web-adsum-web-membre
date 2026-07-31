@@ -1813,6 +1813,17 @@ export async function getFichierBibliotheque(token: string, versionId: string): 
  *  The sign-in screen and the header carry a name and a palette, and they are shown
  *  to somebody with no token yet: written into the code, every deployment would
  *  greet its members with somebody else's name. */
+/** One term, in the words this organisation uses. */
+export interface MotOrganisation {
+  singulier: string;
+  pluriel: string;
+  article: string;
+  Singulier: string;
+  Pluriel: string;
+  /** Ready to drop into a sentence: "la tribu", "l'intendance". */
+  avec_article: string;
+}
+
 export interface MarquePublique {
   marque: string;
   initiale: string;
@@ -1823,6 +1834,9 @@ export interface MarquePublique {
   site: string | null;
   couleur: string;
   couleur_sombre: string;
+  /** How this organisation names its units and responsibilities. A parish says
+   *  secteur where this one says intendance, and the interface must follow. */
+  mots: Record<string, MotOrganisation>;
 }
 
 export async function getMarquePublique(): Promise<MarquePublique> {
