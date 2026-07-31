@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { ApiError, login, loginVerify, requestLoginCode } from "../api.js";
 import { useT } from "../i18n.js";
+import { useMarque } from "../useMarque.js";
 import { T } from "../proto.js";
 import { PasswordInput } from "./PasswordInput.js";
 
@@ -24,6 +25,7 @@ type Methode = "email" | "matricule" | "code";
 
 export function Login({ onAuth, onForgot, avis }: LoginProps): JSX.Element {
   const t = useT();
+  const marque = useMarque();
   // The identifier field carries the e-mail (default), the ADSUM matricule, or the
   // member code, depending on the chosen method. The server resolves all three.
   const [methode, setMethode] = useState<Methode>("email");
@@ -96,9 +98,9 @@ export function Login({ onAuth, onForgot, avis }: LoginProps): JSX.Element {
   return (
     <div className="login">
       <div className="login-logo" aria-hidden="true">
-        A
+        {marque.initiale}
       </div>
-      <div className="login-brand">ADSUM</div>
+      <div className="login-brand">{marque.marque}</div>
       <p className="login-sub">{t("login.tagline")}</p>
 
       {avis && (

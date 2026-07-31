@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { getPhotoUrl } from "../api.js";
 import { useT } from "../i18n.js";
 import { initials } from "../name.js";
+import { useMarque } from "../useMarque.js";
 
 // The member digital card. When logged in, the QR holds the real token signed by
 // the server (prop serverToken). In the offline preview, it is signed in the
@@ -104,6 +105,7 @@ export function QrCard({
   categoriePrincipale,
 }: QrCardProps): JSX.Element {
   const t = useT();
+  const marqueCarte = useMarque();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [previewToken] = useState(() => {
     const kp = generateKeyPair();
@@ -180,7 +182,7 @@ export function QrCard({
   return (
     <div className="card">
       <div className="card-top">
-        <span className="card-brand">ADSUM</span>
+        <span className="card-brand">{marqueCarte.marque}</span>
         <span className="card-chip" aria-hidden="true" />
       </div>
       <div className="card-identity">
@@ -214,7 +216,7 @@ export function QrCard({
             </p>
           )}
           <p className="card-tribu">
-            {tribu ? t("qrcard.tribu").replace("{tribu}", tribu) : "Sacerdoce Royal"}
+            {tribu ? t("qrcard.tribu").replace("{tribu}", tribu) : marqueCarte.organisation}
             {commission ? ` · ${commission}` : ""}
           </p>
         </div>

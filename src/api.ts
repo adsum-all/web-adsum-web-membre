@@ -1808,3 +1808,25 @@ export async function getFichierBibliotheque(token: string, versionId: string): 
   if (!res.ok) throw new ApiError(apiMsg("Fichier indisponible.", "File unavailable."), res.status);
   return (await res.json()) as { url: string; nom: string | null };
 }
+
+/** The organisation's public identity, readable before signing in.
+ *  The sign-in screen and the header carry a name and a palette, and they are shown
+ *  to somebody with no token yet: written into the code, every deployment would
+ *  greet its members with somebody else's name. */
+export interface MarquePublique {
+  marque: string;
+  initiale: string;
+  organisation: string;
+  organisation_courte: string;
+  slogan: string | null;
+  logo_url: string | null;
+  site: string | null;
+  couleur: string;
+  couleur_sombre: string;
+}
+
+export async function getMarquePublique(): Promise<MarquePublique> {
+  const res = await fetch(`${BASE}/api/v1/marque`);
+  if (!res.ok) throw new ApiError(apiMsg("Identité indisponible.", "Identity unavailable."), res.status);
+  return (await res.json()) as MarquePublique;
+}

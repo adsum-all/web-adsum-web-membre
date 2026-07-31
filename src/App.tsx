@@ -18,6 +18,7 @@ import {
   setFuseau,
 } from "./api.js";
 import { type RaisonFin, messageFinDeSession, surFinDeSession } from "./sessionExpiree.js";
+import { useMarque } from "./useMarque.js";
 import { type Lang, LangContext, tr, useT } from "./i18n.js";
 import { clearApiCache, useOnline } from "./offline.js";
 import { civilName, initials as memberInitials } from "./name.js";
@@ -123,6 +124,7 @@ export function App(): JSX.Element {
   const [view, setView] = useState<ViewId | null>(null);
   const [activeEvent, setActiveEvent] = useState<EvenementOut | null>(null);
   const [authView, setAuthView] = useState<"login" | "forgot">("login");
+  const marque = useMarque();
   // Why the last session ended, shown on the sign-in screen so the return is
   // explained instead of abrupt.
   const [finDeSession, setFinDeSession] = useState<RaisonFin | null>(null);
@@ -426,7 +428,7 @@ export function App(): JSX.Element {
     return (
       <Shell>
         <header className="topbar">
-          <span className="topbar-title">ADSUM</span>
+          <span className="topbar-title">{marque.marque}</span>
           <button type="button" className="bell" onClick={logout} aria-label={t("app.aria.quit")}>
             ⏻
           </button>
