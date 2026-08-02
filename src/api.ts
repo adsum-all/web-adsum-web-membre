@@ -454,6 +454,8 @@ export interface LoginResult {
   // Canonical account e-mail once the password is validated, so a matricule or
   // member-code sign-in still drives the e-mail based first-login flow correctly.
   email: string | null;
+  /** Why the mailbox refused our last messages, when it did. Null otherwise. */
+  alerteEmail: string | null;
 }
 
 /** Stable per-device id kept in localStorage, sent so the server can remember a
@@ -489,12 +491,13 @@ export async function login(identifiant: string, password: string): Promise<Logi
     throw new ApiError(apiMsg("Connexion au serveur impossible. Vérifiez votre réseau.", "Cannot reach the server. Check your network."), 0);
   }
   if (!res.ok) throw loginError(res.status);
-  const data = (await res.json()) as { otp_required?: boolean; access_token?: string | null; doit_changer_mdp?: boolean; canal?: string | null; email?: string | null };
+  const data = (await res.json()) as { otp_required?: boolean; access_token?: string | null; doit_changer_mdp?: boolean; canal?: string | null; email?: string | null; alerte_email?: string | null };
   return {
     otpRequired: Boolean(data.otp_required),
     token: data.access_token ?? null,
     doitChangerMdp: Boolean(data.doit_changer_mdp),
     canal: data.canal ?? null,
+    alerteEmail: data.alerte_email ?? null,
     email: data.email ?? null,
   };
 }
@@ -519,7 +522,9 @@ export async function loginVerify(
   }
   if (!res.ok) throw loginError(res.status);
   const data = (await res.json()) as { access_token?: string | null; doit_changer_mdp?: boolean; email?: string | null };
-  return { otpRequired: false, token: data.access_token ?? null, doitChangerMdp: Boolean(data.doit_changer_mdp), canal: null, email: data.email ?? null };
+  // alerteEmail is null here on purpose: the code was just accepted, so whatever the
+  // mailbox did earlier no longer stands between this member and their account.
+  return { otpRequired: false, token: data.access_token ?? null, doitChangerMdp: Boolean(data.doit_changer_mdp), canal: null, email: data.email ?? null, alerteEmail: null };
 }
 
 /** Re-send the login code on a chosen channel. Telegram is the default at login;
@@ -1512,6 +1517,45 @@ async function authedPut<T>(path: string, token: string, body: unknown, onError:
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
+/** Whether this organisation has configured push delivery at all.
+ *
+ *  Asked before the operating system is prompted for the notification permission:
+ *  Android offers that prompt once, and spending it on a channel the organisation
+ *  cannot deliver on buys the member nothing. */
+export async function poussePossible(token: string): Promise<boolean> {
+  try {
+    const res = await authedGet<{ disponible: boolean }>(
+      "/api/v1/membres/me/push-disponible", token, "Indisponible",
+    );
+    return Boolean(res.disponible);
+  } catch {
+    return false;
+  }
+}
+
+/** Register or refresh this device. Idempotent: called at every launch, because the
+ *  push service may have rotated the token while the application was closed. */
+export function enregistrerAppareilPush(
+  token: string, jeton: string, plateforme: string, libelle?: string,
+): Promise<void> {
+  return authedPut<void>(
+    "/api/v1/membres/me/appareils-push", token,
+    { jeton, plateforme, libelle: libelle ?? null }, "Enregistrement impossible",
+  );
+}
+
+/** Stop notifying this device. Called on sign-out, while the session is still valid. */
+export async function retirerAppareilPush(token: string, jeton: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/membres/me/appareils-push`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ jeton }),
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new ApiError(apiMsg("Retrait impossible", "Removal failed"), res.status);
+  }
+}
+
 export function updateProfil(
   token: string,
   fields: ProfilFields,
@@ -1832,6 +1876,12 @@ export interface MarquePublique {
   slogan: string | null;
   logo_url: string | null;
   site: string | null;
+  /** Where this organisation's other applications are served. Null when the
+   *  organisation has not declared one, which means "offer no link" rather than
+   *  "fall back to somebody else's address". */
+  url_membre: string | null;
+  url_back_office: string | null;
+  url_public: string | null;
   couleur: string;
   couleur_sombre: string;
   /** How this organisation names its units and responsibilities. A parish says

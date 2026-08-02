@@ -48,6 +48,7 @@ import { MesApplications } from "./components/MesApplications.js";
 import { Settings } from "./components/Settings.js";
 import { Suivi } from "./components/Suivi.js";
 import { TabBar, type TabId } from "./components/TabBar.js";
+import { activerPush, desactiverPush } from "./pushMobile.js";
 
 type ViewId =
   | "dossier"
@@ -161,6 +162,10 @@ export function App(): JSX.Element {
       saveToken(jwt);
       setToken(jwt);
       setCompteNonMembre(false);
+      // Register this phone for notifications. Does nothing on the web, and nothing
+      // in the application until the organisation has configured push, so it costs a
+      // signed-in member on a browser exactly one no-op.
+      void activerPush(jwt);
       refreshInscription(jwt);
       void getMembreProfile(jwt)
         .then(setProfile)
@@ -333,6 +338,10 @@ export function App(): JSX.Element {
   }), []);
 
   const logout = useCallback(() => {
+    // Withdraw this phone BEFORE the session goes: afterwards the platform has no way
+    // to know which device to silence, and notifications keep arriving on a phone
+    // nobody is signed in on. Not awaited, so signing out stays immediate.
+    if (token) void desactiverPush(token);
     if (token) void logoutSession(token).catch(() => undefined);
     clearApiCache();
     saveToken(null);
@@ -437,11 +446,17 @@ export function App(): JSX.Element {
           <div style={{ textAlign: "center", padding: "2rem 1rem", maxWidth: 420, margin: "0 auto" }}>
             <h2>{t("app.nonMembre.title")}</h2>
             <p style={{ color: T.mut, lineHeight: 1.6 }}>{t("app.nonMembre.body")}</p>
-            <p style={{ color: T.mut }}>
-              <a href="https://adsum-back-office.pages.dev" style={{ color: T.tintbf, fontWeight: 600 }}>
-                {t("app.nonMembre.link")}
-              </a>
-            </p>
+            {/* Shown only when the organisation has declared where its back office
+                lives. The address used to be a literal here, so every deployment of
+                this product sent its own members to this organisation's back office.
+                No address configured means no link, rather than a wrong one. */}
+            {marque.url_back_office && (
+              <p style={{ color: T.mut }}>
+                <a href={marque.url_back_office} style={{ color: T.tintbf, fontWeight: 600 }}>
+                  {t("app.nonMembre.link")}
+                </a>
+              </p>
+            )}
             <button type="button" className="btn-secondary" onClick={logout} style={{ marginTop: 12 }}>
               {t("settings.logout")}
             </button>

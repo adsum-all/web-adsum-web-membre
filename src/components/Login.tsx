@@ -36,6 +36,9 @@ export function Login({ onAuth, onForgot, avis }: LoginProps): JSX.Element {
   // Second factor step: shown only when the server asks for a code.
   const [step, setStep] = useState<"password" | "otp">("password");
   const [canal, setCanal] = useState<string | null>(null);
+  // Why the mailbox refused our last messages, when it did. Composed by the server,
+  // which is the only side that knows what the provider reported.
+  const [alerteEmail, setAlerteEmail] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [confiance, setConfiance] = useState(true);
   const [renvoye, setRenvoye] = useState(false);
@@ -48,6 +51,7 @@ export function Login({ onAuth, onForgot, avis }: LoginProps): JSX.Element {
       const res = await login(identifiant.trim(), password);
       if (res.otpRequired) {
         setCanal(res.canal);
+        setAlerteEmail(res.alerteEmail);
         setStep("otp");
       } else if (res.token) {
         // For the first-login flow, always hand over the canonical e-mail so the
@@ -183,6 +187,10 @@ export function Login({ onAuth, onForgot, avis }: LoginProps): JSX.Element {
           <p className="login-sub" style={{ marginTop: 0 }}>
             {t("login.otpIntro").replace("{canal}", canalLabel)}
           </p>
+          {/* Placed right under the announcement it qualifies: on its own the line
+              above says a code is on its way, which is not true when the mailbox has
+              been bouncing every message. */}
+          {alerteEmail && <p className="banner banner-warn small">{alerteEmail}</p>}
           <label>
             <span>{t("login.otpLabel")}</span>
             <input

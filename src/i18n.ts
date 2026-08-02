@@ -1,5 +1,8 @@
 import { createContext, useContext } from "react";
 
+import type { MarquePublique } from "./api.js";
+import { useMarque } from "./useMarque.js";
+
 export type Lang = "fr" | "en";
 
 // Central FR/EN dictionary. Keys are stable; add entries as screens are localized.
@@ -584,7 +587,7 @@ const DICT: Record<string, { fr: string; en: string }> = {
   },
   "completer.fBergerDeclare": { fr: "Êtes-vous berger / bergère ?", en: "Are you a shepherd?" },
   "completer.iBergerDeclare": {
-    fr: "Indiquez si vous êtes déjà berger ou bergère au Sacerdoce Royal. Cette déclaration sera confirmée par l'administration.",
+    fr: "Indiquez si vous êtes déjà berger ou bergère au sein de {organisation}. Cette déclaration sera confirmée par l'administration.",
     en: "State whether you already are a shepherd in the community. This declaration will be confirmed by the administration.",
   },
   "completer.bergerOui": { fr: "Oui, je suis berger / bergère", en: "Yes, I am a shepherd" },
@@ -695,7 +698,10 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "completer.anneeVisible": { fr: "Afficher mon année de naissance sur mon profil (sinon seul le jour et le mois, pour l'anniversaire, sont visibles)", en: "Show my birth year on my profile (otherwise only the day and month, for the birthday, are visible)" },
   "completer.signatureIntro": { fr: "Lisez les documents puis signez électroniquement avec le code reçu. Cette signature valide votre engagement.", en: "Read the documents then sign electronically with the code you received. This signature validates your commitment." },
   "completer.recapIntro": { fr: "Vérifiez le récapitulatif. Vous pouvez revenir en arrière pour corriger avant d'envoyer.", en: "Review the summary. You can go back to correct before sending." },
-  "completer.recapMatricule": { fr: "Matricule ADSUM (attribué automatiquement)", en: "ADSUM member ID (assigned automatically)" },
+  // {marque} is filled from the organisation's identity at render time. Written as a
+  // literal it named one product line, so every other organisation showed its members
+  // a member number labelled with somebody else's brand.
+  "completer.recapMatricule": { fr: "Matricule {marque} (attribué automatiquement)", en: "{marque} member ID (assigned automatically)" },
   "completer.refsError": { fr: "Certaines listes (commissions, tribus, rattachements...) n'ont pas pu être chargées. Vérifiez votre connexion puis réessayez.", en: "Some lists (commissions, tribes, attachments...) could not be loaded. Check your connection and try again." },
   "completer.refsRetry": { fr: "Recharger les listes", en: "Reload the lists" },
 
@@ -791,7 +797,7 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "login.methodEmail": { fr: "E-mail", en: "E-mail" },
   "login.methodMatricule": { fr: "Matricule", en: "Matricule" },
   "login.methodCode": { fr: "Code membre", en: "Member code" },
-  "login.identMatricule": { fr: "Matricule ADSUM", en: "ADSUM matricule" },
+  "login.identMatricule": { fr: "Matricule {marque}", en: "{marque} matricule" },
   "login.identCode": { fr: "Code membre", en: "Member code" },
   "login.phMatricule": { fr: "ADS-XX-000000-X", en: "ADS-XX-000000-X" },
   "login.phCode": { fr: "Votre code membre", en: "Your member code" },
@@ -926,7 +932,7 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "infos.rowNomPastoral": { fr: "Nom pastoral", en: "Pastoral name" },
   "infos.rowFonction": { fr: "Fonction", en: "Function" },
   "infos.rowAnniversaire": { fr: "Anniversaire", en: "Birthday" },
-  "infos.rowMatricule": { fr: "Matricule ADSUM", en: "ADSUM ID" },
+  "infos.rowMatricule": { fr: "Matricule {marque}", en: "{marque} ID" },
   "infos.rowCodeMembre": { fr: "Code membre", en: "Member code" },
   "infos.rowCourriel": { fr: "Courriel", en: "Email" },
   "infos.rowLocalisation": { fr: "Localisation", en: "Location" },
@@ -1156,7 +1162,23 @@ export function useLang(): Lang {
   return useContext(LangContext);
 }
 
+/** Fill the identity placeholders a label may carry.
+ *
+ *  Done here rather than at each call site: the brand and the organisation appear in
+ *  labels all over the application, and a substitution every screen has to remember
+ *  is one every new screen will forget, leaving one organisation's name on another
+ *  organisation's interface.
+ */
+export function appliquerIdentite(texte: string, marque: MarquePublique): string {
+  if (!texte.includes("{")) return texte;
+  return texte
+    .replace(/\{marque\}/g, marque.marque)
+    .replace(/\{organisation\}/g, marque.organisation)
+    .replace(/\{organisationCourte\}/g, marque.organisation_courte);
+}
+
 export function useT(): (key: string) => string {
   const lang = useLang();
-  return (key: string) => tr(lang, key);
+  const marque = useMarque();
+  return (key: string) => appliquerIdentite(tr(lang, key), marque);
 }
