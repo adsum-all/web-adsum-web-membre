@@ -749,15 +749,46 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           <div style={{ border: `1px solid ${T.b600}`, background: T.tintb, borderRadius: 13, padding: "10px 13px 14px", margin: "12px 0 4px" }}>
             <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "2px 0 0" }}>{t("completer.secCodeMembre")}</p>
             <p style={{ fontSize: 11.5, color: T.ink, lineHeight: 1.5, margin: "6px 0 2px" }}>{t("completer.noteCodeMembre")}</p>
-            <Field label={t("completer.fCodeMembre")} champ="code_membre" highlight={hl("code_membre")} info={t("completer.iCodeMembre")}>
-              <input
-                style={{ ...inp("code_membre"), textTransform: "uppercase", fontFamily: T.fm, letterSpacing: 1, fontSize: 15 }}
-                value={f.code_membre ?? ""}
-                onChange={(e) => set("code_membre", e.target.value.toUpperCase())}
-                placeholder={t("completer.phCodeMembre")}
-                maxLength={32}
-              />
+            {/* Asked before the code itself, and answered "oui" to begin with: the
+                code is issued to every member, so having one is the ordinary case
+                and the exception is what deserves an explicit act. Saying "non"
+                closes the field rather than leaving an empty box the member might
+                read as optional. */}
+            <Field label={t("completer.fACodeMembre")} champ="a_code_membre" info={t("completer.iACodeMembre")}>
+              <select
+                style={inp("a_code_membre")}
+                value={f.a_code_membre === false ? "non" : "oui"}
+                onChange={(e) => {
+                  const possede = e.target.value === "oui";
+                  set("a_code_membre", possede);
+                  // Clearing on "non" keeps the record consistent with what was just
+                  // declared, instead of storing a code beside a statement that
+                  // there is none.
+                  if (!possede) set("code_membre", "");
+                }}
+              >
+                <option value="oui">{t("completer.aCodeMembreOui")}</option>
+                <option value="non">{t("completer.aCodeMembreNon")}</option>
+              </select>
             </Field>
+            {f.a_code_membre === false ? (
+              // What happens next, said now. A member who is told only "you cannot
+              // fill this in" assumes the matter is closed; what they need to know
+              // is that the field reopens, and on what.
+              <p style={{ fontSize: 11.5, color: T.ink, background: T.warnbg, border: `1px solid ${T.warn}`, borderRadius: 11, padding: "10px 12px", lineHeight: 1.55, margin: "10px 0 2px" }}>
+                {t("completer.noteSansCodeMembre")}
+              </p>
+            ) : (
+              <Field label={t("completer.fCodeMembre")} champ="code_membre" highlight={hl("code_membre")} info={t("completer.iCodeMembre")}>
+                <input
+                  style={{ ...inp("code_membre"), textTransform: "uppercase", fontFamily: T.fm, letterSpacing: 1, fontSize: 15 }}
+                  value={f.code_membre ?? ""}
+                  onChange={(e) => set("code_membre", e.target.value.toUpperCase())}
+                  placeholder={t("completer.phCodeMembre")}
+                  maxLength={32}
+                />
+              </Field>
+            )}
           </div>
 
           <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "18px 2px 2px" }}>{t("completer.secEngagement")}</p>

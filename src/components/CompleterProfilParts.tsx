@@ -91,6 +91,10 @@ export function initialFields(p: MembreProfile | null): ProfilFields {
     type_mariage: p?.type_mariage ?? "",
     en_cheminement: p?.en_cheminement ?? null,
     code_membre: p?.code_membre ?? "",
+    // Defaults to true, and this one is deliberate: the organisation issues a code
+    // to every member, so holding one is the ordinary case. The member's own earlier
+    // answer wins when there is one.
+    a_code_membre: p?.a_code_membre ?? true,
     date_entree: p?.date_entree ?? "",
     promotion: p?.promotion ?? "",
     profession: p?.profession ?? "",

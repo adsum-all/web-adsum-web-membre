@@ -582,6 +582,20 @@ const DICT: Record<string, { fr: string; en: string }> = {
   },
   //: Shown on a required field the member left empty when trying to move on.
   "completer.tagManquant": { fr: "à renseigner", en: "required" },
+  //: Asked before the code itself. Defaults to "oui" because the organisation
+  //: issues a code to everyone: holding one is the ordinary case, and it is the
+  //: exception that deserves an explicit act.
+  "completer.fACodeMembre": { fr: "Possédez-vous un code membre ?", en: "Do you have a member code?" },
+  "completer.iACodeMembre": {
+    fr: "Le code membre est délivré par l'organisation. Si vous ne l'avez pas encore reçu, répondez non : le champ vous sera rouvert le jour où il vous sera remis.",
+    en: "The member code is issued by the organisation. If you have not received it yet, answer no: the field will be reopened for you once it is.",
+  },
+  "completer.aCodeMembreOui": { fr: "Oui, j'ai un code membre", en: "Yes, I have a member code" },
+  "completer.aCodeMembreNon": { fr: "Non, je n'en ai pas encore", en: "No, not yet" },
+  "completer.noteSansCodeMembre": {
+    fr: "Vous avez déclaré ne pas encore avoir de code membre. Le champ est donc fermé et votre inscription se poursuit normalement. Dès que l'organisation vous remettra votre code, faites une demande de mise à jour depuis votre espace : le champ sera rouvert pour que vous puissiez le renseigner. L'administration pourra également vous le demander de son côté.",
+    en: "You have stated that you do not have a member code yet, so the field is closed and your registration continues normally. As soon as the organisation issues your code, open an update request from your space: the field will be reopened for you. The administration may also ask you for it.",
+  },
   "completer.fCodeMembre": { fr: "Code membre (si vous en avez un)", en: "Member code (if you have one)" },
   "completer.iCodeMembre": { fr: "Code externe de l'organisation, différent du matricule ADSUM. En majuscules, unique. Laissez vide si vous n'en avez pas.", en: "External organisation code, distinct from the ADSUM member ID. Uppercase, unique. Leave empty if you have none." },
   "completer.phCodeMembre": { fr: "Ex. SR-AB-1234", en: "E.g. SR-AB-1234" },

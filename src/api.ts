@@ -85,6 +85,7 @@ export interface MembreProfile {
   intendant: string | null;
   intendant_titre: string | null;
   berger: string | null;
+  a_code_membre?: boolean | null;
   tribu: string | null;
   /** The colour the tribe is known by, hexadecimal, or null when none is set. */
   tribu_couleur?: string | null;
@@ -1474,6 +1475,8 @@ export interface ProfilFields {
   confirme?: boolean;
   premiere_communion?: boolean;
   code_membre?: string;
+  /** Whether the member says they hold an organisation-issued code. */
+  a_code_membre?: boolean | null;
   date_entree?: string;
   promotion?: string;
   // Three states, not two. Null means the member has not answered yet, and it is
