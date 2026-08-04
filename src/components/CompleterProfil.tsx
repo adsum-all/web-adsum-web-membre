@@ -379,7 +379,8 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
   const requiredOk =
     !!f.prenoms?.trim() && !!f.nom?.trim() && !!f.telephone?.trim() && !!f.indicatif_telephone?.trim() &&
     !!f.date_naissance && !!f.genre && !!f.pays?.trim() && !!f.ville?.trim() && !!f.commission_id && !!f.tribu_id &&
-    !!f.date_entree && !!f.situation_matrimoniale && axeOk;
+    !!f.date_entree && !!f.situation_matrimoniale && axeOk &&
+    (f.berger_declare !== true || !!f.berger_nom_declare?.trim());
   // A document is required only if it is not already provided, or if it was
   // explicitly flagged for correction.
   const photoOk = photoProvided ? true : !!photoFile;
@@ -410,6 +411,11 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
     if (i === 2) {
       // The entry date into the organisation is mandatory (community journey), and
       // the marital situation is a core profile fact: neither is left optional.
+      // Declaring oneself a berger without giving the consecration name leaves a
+      // title attached to nobody, which the administration cannot confirm.
+      if (f.berger_declare === true && !f.berger_nom_declare?.trim()) {
+        return t("completer.errBergerNom");
+      }
       if (!f.date_entree) return t("completer.errDateEntree");
       if (!f.situation_matrimoniale) return t("completer.errSituation");
       return null;
@@ -457,6 +463,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
     }
     if (i === 2) {
       return [
+        f.berger_declare === true && !f.berger_nom_declare?.trim() && "berger_nom_declare",
         !f.date_entree && "date_entree",
         !f.situation_matrimoniale && "situation_matrimoniale",
       ].filter((x): x is string => typeof x === "string");
@@ -840,7 +847,12 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
                 />
               </Field>
               {!f.genre && <p style={{ fontSize: 11, color: T.warn, margin: "4px 2px 0" }}>{t("completer.bergerGenreManquant")}</p>}
-              <Field label={t("completer.fBergerNom")} highlight={hl("berger_nom_declare")} info={t("completer.iBergerNom")}>
+              {/* Required from the moment the member says they are a berger. The
+                  consecration name IS the declaration: "Berger" with no name names
+                  nobody, and the administration cannot verify what it cannot read.
+                  It only exists inside this branch, so answering "non" removes the
+                  question rather than leaving an obligation nobody can meet. */}
+              <Field label={t("completer.fBergerNom")} required champ="berger_nom_declare" manquant={manque("berger_nom_declare")} highlight={hl("berger_nom_declare")} info={t("completer.iBergerNom")}>
                 <input
                   style={inp("berger_nom_declare")}
                   value={f.berger_nom_declare ?? ""}

@@ -616,6 +616,10 @@ const DICT: Record<string, { fr: string; en: string }> = {
   },
   "completer.bergerOui": { fr: "Oui, je suis berger / bergère", en: "Yes, I am a shepherd" },
   "completer.bergerNon": { fr: "Non", en: "No" },
+  "completer.errBergerNom": {
+    fr: "Vous avez déclaré être berger ou bergère : indiquez votre nom de consécration.",
+    en: "You have declared yourself a shepherd: enter your consecration name.",
+  },
   "completer.fBergerNom": { fr: "Nom de consécration (sans « Berger »/« Bergère »)", en: "Consecration name (without the title)" },
   "completer.iBergerNom": {
     fr: "Saisissez uniquement votre nom de consécration, par exemple « David de Jésus ». Le titre « Berger » ou « Bergère » est ajouté automatiquement selon votre sexe, pour éviter de l'écrire deux fois.",
