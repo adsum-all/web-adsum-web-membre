@@ -18,8 +18,19 @@ technical debt for a dedicated refactor with full test coverage.
 - src/App.tsx (794 lines): the app shell (routing, language context, layout).
   Over the 750 maximum; PRIORITY split: extract the route tree and the language
   provider into their own modules.
-- src/components/CompleterProfil.tsx (621 lines): the multi-step onboarding
-  wizard. To be split by extracting each step into its own component.
+- src/components/CompleterProfil.tsx (1052 lines): the multi-step onboarding
+  wizard. Over the 750 absolute maximum, so PRIORITY split. The recorded figure
+  above had drifted far from the file: it read 621 while the file was already at
+  954, which is how a documented exception stops being a decision and becomes a
+  place things accumulate unnoticed. Recorded honestly here so the next reading is
+  of the real size.
+
+  The plan is unchanged and half done: extract each step into its own component.
+  The final recap step now lives in `CompleterRecap.tsx`; it went first because it
+  only reads, so moving it could not move any behaviour. What remains is the
+  "Vie & fonction" step, by far the largest block, which needs about twenty values
+  and handlers passed to it. That one deserves its own change with the form
+  exercised end to end, not a passenger on a functional delivery.
 - src/components/Settings.tsx (546 lines): the member settings screen. To be
   split by extracting each settings section (security, notifications, language).
 

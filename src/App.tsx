@@ -24,6 +24,7 @@ import { clearApiCache, useOnline } from "./offline.js";
 import { civilName, initials as memberInitials } from "./name.js";
 import { T } from "./proto.js";
 import { CompleterProfil } from "./components/CompleterProfil.js";
+import { PastilleTribu } from "./components/PastilleTribu.js";
 import { Activites } from "./components/Activites.js";
 import { Calendrier } from "./components/Calendrier.js";
 import { Carte } from "./components/Carte.js";
@@ -1022,16 +1023,21 @@ function Profil({
         {[
           // Named with the organisation's own words: a parish says secteur where
           // this one says commission, and the label must follow the data.
-          [mot(marqueProfil, "commission", "Singulier", t("app.profil.commission")), profile?.commission ?? "-"],
-          [mot(marqueProfil, "tribu", "Singulier", t("app.profil.tribu")), profile?.tribu ?? "-"],
-          [t("app.profil.since"), since ? String(since) : "-"],
-        ].map(([label, value], i) => (
+          { label: mot(marqueProfil, "commission", "Singulier", t("app.profil.commission")), value: profile?.commission ?? "-" },
+          // The tribe carries its colour: members recognise their own by it before
+          // they read the word. Nothing is drawn when no colour is set.
+          { label: mot(marqueProfil, "tribu", "Singulier", t("app.profil.tribu")), value: profile?.tribu ?? "-", couleur: profile?.tribu_couleur },
+          { label: t("app.profil.since"), value: since ? String(since) : "-" },
+        ].map(({ label, value, couleur }, i) => (
           <div
             key={label}
-            style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", borderBottom: i < 2 ? `1px solid ${T.line}` : "none" }}
+            style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "12px 14px", borderBottom: i < 2 ? `1px solid ${T.line}` : "none" }}
           >
             <span style={{ fontSize: 12.5, color: T.mut }}>{label}</span>
-            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{value}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 7 }}>
+              <PastilleTribu couleur={couleur} />
+              {value}
+            </span>
           </div>
         ))}
       </div>

@@ -86,6 +86,8 @@ export interface MembreProfile {
   intendant_titre: string | null;
   berger: string | null;
   tribu: string | null;
+  /** The colour the tribe is known by, hexadecimal, or null when none is set. */
+  tribu_couleur?: string | null;
   patriarche: string | null;
   coordination: string | null;
   coordination_id?: string | null;
@@ -1474,9 +1476,12 @@ export interface ProfilFields {
   code_membre?: string;
   date_entree?: string;
   promotion?: string;
-  berger_declare?: boolean;
+  // Three states, not two. Null means the member has not answered yet, and it is
+  // distinct from "no": the form preselected "no" before anybody had chosen, so a
+  // declaration that should have been made read as a refusal nobody had made.
+  berger_declare?: boolean | null;
   berger_nom_declare?: string;
-  equipe_dirigeante_declaree?: boolean;
+  equipe_dirigeante_declaree?: boolean | null;
   type_membre?: string;
   fonction_cle?: string;
   // Four-block registration declarations (special functions, functions, particular

@@ -572,6 +572,16 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "completer.secEngagement": { fr: "ENGAGEMENT & FONCTION", en: "COMMITMENT & FUNCTION" },
   "completer.secAdresse": { fr: "ADRESSE (facultatif)", en: "ADDRESS (optional)" },
   "completer.secVie": { fr: "VIE PERSONNELLE (facultatif)", en: "PERSONAL LIFE (optional)" },
+  // The community's own member code, asked first and on its own. It is a second
+  // identifier, issued by the community and distinct from the matricule this
+  // platform generates, so nobody here can reissue it if it is lost.
+  "completer.secCodeMembre": { fr: "VOTRE CODE MEMBRE", en: "YOUR MEMBER CODE" },
+  "completer.noteCodeMembre": {
+    fr: "Si l'organisation vous a déjà attribué un code membre, renseignez-le ici. Il est différent du matricule que cette plateforme vous délivre, et lui seul permet de vous relier à vos antécédents. Laissez vide si vous n'en avez pas encore.",
+    en: "If the organisation has already issued you a member code, enter it here. It is distinct from the member ID this platform issues you, and it alone links you to your existing record. Leave it empty if you do not have one yet.",
+  },
+  //: Shown on a required field the member left empty when trying to move on.
+  "completer.tagManquant": { fr: "à renseigner", en: "required" },
   "completer.fCodeMembre": { fr: "Code membre (si vous en avez un)", en: "Member code (if you have one)" },
   "completer.iCodeMembre": { fr: "Code externe de l'organisation, différent du matricule ADSUM. En majuscules, unique. Laissez vide si vous n'en avez pas.", en: "External organisation code, distinct from the ADSUM member ID. Uppercase, unique. Leave empty if you have none." },
   "completer.phCodeMembre": { fr: "Ex. SR-AB-1234", en: "E.g. SR-AB-1234" },
