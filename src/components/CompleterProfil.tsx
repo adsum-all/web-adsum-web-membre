@@ -28,7 +28,6 @@ import {
   Field,
   GENRES,
   NIVEAUX_ETUDES,
-  RecapRow,
   SITUATIONS,
   SacrementCheck,
   Stepper,
@@ -37,9 +36,11 @@ import {
   WIZARD_STEPS,
   WizardNav,
   baseInp,
+  bordureManquante,
   initialFields,
 } from "./CompleterProfilParts.js";
 import { PaysSelect, PhoneField, indicatifDePays } from "./FormFields.js";
+import { CompleterRecap } from "./CompleterRecap.js";
 import { PiecesJustificatives } from "./PiecesJustificatives.js";
 import { RecadragePhoto } from "./RecadragePhoto.js";
 import { SignatureEngagement } from "./SignatureEngagement.js";
@@ -131,6 +132,23 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
   const correction = statut === "modification_demandee";
   const flagged = useMemo(() => new Set(champsACorriger), [champsACorriger]);
   const hl = (name: string): boolean => correction && flagged.has(name);
+
+  // Required fields left empty when the member last tried to move on. Held so the
+  // fields themselves can say what is missing: the message under the button named
+  // the problem but not its place, and on a long step that meant scrolling back and
+  // hunting. Emptied as soon as a field is filled, so nothing stays red once it is
+  // answered.
+  const [manquants, setManquants] = useState<ReadonlySet<string>>(new Set());
+  const manque = (name: string): boolean => manquants.has(name);
+  /** Drop a field's mark once it has been answered. */
+  function oublierManquant(name: string): void {
+    setManquants((prev) => {
+      if (!prev.has(name)) return prev;
+      const suite = new Set(prev);
+      suite.delete(name);
+      return suite;
+    });
+  }
 
   const [tribus, setTribus] = useState<RefItem[]>([]);
   const [commissions, setCommissions] = useState<RefItem[]>([]);
@@ -225,8 +243,22 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
   function set<K extends keyof ProfilFields>(k: K, v: ProfilFields[K]): void {
     dirty.current = true;
     setF((prev) => ({ ...prev, [k]: v }));
+    // Answering a field clears its mark straight away, rather than at the next
+    // attempt to move on: a field that stays red after being filled reads as a
+    // refusal of what was just typed.
+    const rempli = v !== "" && v !== null && v !== undefined;
+    if (rempli && manquants.has(k as string)) {
+      setManquants((prev) => {
+        const suite = new Set(prev);
+        suite.delete(k as string);
+        return suite;
+      });
+    }
   }
   function inp(name: string): React.CSSProperties {
+    // A missing required field wins over a correction mark: the member cannot move
+    // on until it is filled, so that is the more urgent of the two things to say.
+    if (manque(name)) return { ...baseInp, ...bordureManquante };
     return hl(name) ? { ...baseInp, border: `1px solid ${T.warn}` } : baseInp;
   }
 
@@ -262,8 +294,12 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
                   onClick={() => basculerFonction(fn.cle)}
                   aria-pressed={sel}
                   style={{
+                    // One weight, ticked or not. Bolding on selection made the list
+                    // reflow as the member worked through it, and put the emphasis on
+                    // whichever answers happened to be chosen rather than on the
+                    // question. The frame and the tint already say what is selected.
                     width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit", fontSize: 14,
-                    padding: "11px 13px", borderRadius: 11, fontWeight: sel ? 600 : 500,
+                    padding: "11px 13px", borderRadius: 11, fontWeight: 500,
                     border: `1.5px solid ${sel ? T.b600 : T.line}`,
                     background: sel ? T.tintb : "transparent", color: sel ? T.tintbf : T.ink,
                     display: "flex", alignItems: "center", gap: 10,
@@ -343,7 +379,8 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
   const requiredOk =
     !!f.prenoms?.trim() && !!f.nom?.trim() && !!f.telephone?.trim() && !!f.indicatif_telephone?.trim() &&
     !!f.date_naissance && !!f.genre && !!f.pays?.trim() && !!f.ville?.trim() && !!f.commission_id && !!f.tribu_id &&
-    !!f.date_entree && !!f.situation_matrimoniale && axeOk;
+    !!f.date_entree && !!f.situation_matrimoniale && axeOk &&
+    (f.berger_declare !== true || !!f.berger_nom_declare?.trim());
   // A document is required only if it is not already provided, or if it was
   // explicitly flagged for correction.
   const photoOk = photoProvided ? true : !!photoFile;
@@ -374,6 +411,11 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
     if (i === 2) {
       // The entry date into the organisation is mandatory (community journey), and
       // the marital situation is a core profile fact: neither is left optional.
+      // Declaring oneself a berger without giving the consecration name leaves a
+      // title attached to nobody, which the administration cannot confirm.
+      if (f.berger_declare === true && !f.berger_nom_declare?.trim()) {
+        return t("completer.errBergerNom");
+      }
       if (!f.date_entree) return t("completer.errDateEntree");
       if (!f.situation_matrimoniale) return t("completer.errSituation");
       return null;
@@ -387,8 +429,68 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
     return null;
   }
 
+  /**
+   * Which required fields of a step are still empty.
+   *
+   * Deliberately a second reading of the same rules as stepBlocker rather than a
+   * refactor of it: that one answers "may the member move on", in one message and in
+   * a chosen order, and this one answers "which fields are at fault", all of them at
+   * once. Merging them would force one of the two answers into the shape of the
+   * other.
+   */
+  function champsManquants(i: number): string[] {
+    if (i === 0) {
+      return [
+        !f.prenoms?.trim() && "prenoms",
+        !f.nom?.trim() && "nom",
+        !f.genre && "genre",
+        !f.date_naissance && "date_naissance",
+        !f.indicatif_telephone?.trim() && "indicatif_telephone",
+        !f.telephone?.trim() && "telephone",
+      ].filter((x): x is string => typeof x === "string");
+    }
+    if (i === 1) {
+      const axes = axe === "deux"
+        ? [!f.intendance_id && "intendance_id", !f.coordination_id && "coordination_id"]
+        : [axe === "coordination" ? !f.coordination_id && "coordination_id" : !f.intendance_id && "intendance_id"];
+      return [
+        !f.pays?.trim() && "pays",
+        !f.ville?.trim() && "ville",
+        !f.commission_id && "commission_id",
+        ...axes,
+        !f.tribu_id && "tribu_id",
+      ].filter((x): x is string => typeof x === "string");
+    }
+    if (i === 2) {
+      return [
+        f.berger_declare === true && !f.berger_nom_declare?.trim() && "berger_nom_declare",
+        !f.date_entree && "date_entree",
+        !f.situation_matrimoniale && "situation_matrimoniale",
+      ].filter((x): x is string => typeof x === "string");
+    }
+    if (i === 3) {
+      return [
+        (!photoOk || photoNeedsRedo) && "photo",
+        (!pieceOk || pieceNeedsRedo) && "piece",
+      ].filter((x): x is string => typeof x === "string");
+    }
+    return [];
+  }
+
+  /** Bring the first field at fault into view, so the red mark is seen, not hunted. */
+  function allerAuPremierManquant(champs: string[]): void {
+    const premier = champs[0];
+    if (!premier || typeof document === "undefined") return;
+    // After the state update, so the field is already marked when it is scrolled to.
+    requestAnimationFrame(() => {
+      const cible = document.querySelector(`[data-champ="${premier}"]`);
+      cible?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }
+
   function goTo(i: number): void {
     setError(null);
+    setManquants(new Set());
     setStep(Math.max(0, Math.min(WIZARD_STEPS.length - 1, i)));
     topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   }
@@ -396,6 +498,9 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
     const blocker = stepBlocker(step);
     if (blocker) {
       setError(blocker);
+      const champs = champsManquants(step);
+      setManquants(new Set(champs));
+      allerAuPremierManquant(champs);
       return;
     }
     goTo(step + 1);
@@ -544,17 +649,17 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
       {step === 0 && (
         <>
           <TelegramInvite token={token} />
-          <Field label={t("completer.fNom")} required highlight={hl("nom")} info={t("completer.iNom")}><input style={inp("nom")} value={f.nom} onChange={(e) => set("nom", nomMajuscule(e.target.value))} placeholder={t("completer.phNom")} /></Field>
+          <Field label={t("completer.fNom")} required champ="nom" manquant={manque("nom")} highlight={hl("nom")} info={t("completer.iNom")}><input style={inp("nom")} value={f.nom} onChange={(e) => set("nom", nomMajuscule(e.target.value))} placeholder={t("completer.phNom")} /></Field>
           <Field label={t("completer.fNomNaissance")} highlight={hl("nom_naissance")} info={t("completer.iNomNaissance")}><input style={inp("nom_naissance")} value={f.nom_naissance ?? ""} onChange={(e) => set("nom_naissance", nomMajuscule(e.target.value))} placeholder={t("completer.phNomNaissance")} /></Field>
-          <Field label={t("completer.fPremierPrenom")} required highlight={hl("prenoms")} info={t("completer.iPremierPrenom")}><input style={inp("prenoms")} value={premierPrenom} onChange={(e) => majPremier(e.target.value)} onBlur={capitaliserPrenomsChamps} placeholder={t("completer.phPremierPrenom")} /></Field>
+          <Field label={t("completer.fPremierPrenom")} required champ="prenoms" manquant={manque("prenoms")} highlight={hl("prenoms")} info={t("completer.iPremierPrenom")}><input style={inp("prenoms")} value={premierPrenom} onChange={(e) => majPremier(e.target.value)} onBlur={capitaliserPrenomsChamps} placeholder={t("completer.phPremierPrenom")} /></Field>
           <Field label={t("completer.fAutresPrenoms")} info={t("completer.iAutresPrenoms")}><input style={baseInp} value={autresPrenoms} onChange={(e) => majAutres(e.target.value)} onBlur={capitaliserPrenomsChamps} placeholder={t("completer.phAutresPrenoms")} /></Field>
-          <Field label={t("completer.fGenre")} required highlight={hl("genre")}>
+          <Field label={t("completer.fGenre")} required champ="genre" manquant={manque("genre")} highlight={hl("genre")}>
             <select style={inp("genre")} value={f.genre} onChange={(e) => set("genre", e.target.value)}>
               <option value="">{t("completer.selectPlaceholder")}</option>
               {GENRES.map((g) => <option key={g.value} value={g.value}>{t(g.labelKey)}</option>)}
             </select>
           </Field>
-          <Field label={t("completer.fDateNaissance")} required highlight={hl("date_naissance")} info={t("completer.iDateNaissance")}><input type="date" style={inp("date_naissance")} value={f.date_naissance} onChange={(e) => set("date_naissance", e.target.value)} /></Field>
+          <Field label={t("completer.fDateNaissance")} required champ="date_naissance" manquant={manque("date_naissance")} highlight={hl("date_naissance")} info={t("completer.iDateNaissance")}><input type="date" style={inp("date_naissance")} value={f.date_naissance} onChange={(e) => set("date_naissance", e.target.value)} /></Field>
           <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 2px 2px", fontSize: 12, color: T.mut }}>
             <input type="checkbox" checked={!!f.naissance_annee_visible} onChange={(e) => set("naissance_annee_visible", e.target.checked)} style={{ width: 17, height: 17, accentColor: T.b600 }} />
             {t("completer.anneeVisible")}
@@ -563,7 +668,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
             <input type="checkbox" checked={f.anniversaire_visible_annuaire !== false} onChange={(e) => set("anniversaire_visible_annuaire", e.target.checked)} style={{ width: 17, height: 17, accentColor: T.b600 }} />
             {t("completer.anniversaireVisible")}
           </label>
-          <Field label={t("completer.fTelephone")} required highlight={hl("telephone")} info={t("completer.iTelephone")}>
+          <Field label={t("completer.fTelephone")} required champ="telephone" manquant={manque("telephone") || manque("indicatif_telephone")} highlight={hl("telephone")} info={t("completer.iTelephone")}>
             <PhoneField
               indicatif={f.indicatif_telephone ?? ""}
               numero={f.telephone ?? ""}
@@ -577,7 +682,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
 
       {step === 1 && (
         <>
-          <Field label={t("completer.fPays")} required highlight={hl("pays")} info={t("completer.iPays")}>
+          <Field label={t("completer.fPays")} required champ="pays" manquant={manque("pays")} highlight={hl("pays")} info={t("completer.iPays")}>
             <PaysSelect
               value={f.pays ?? ""}
               onChange={(nom) => {
@@ -587,8 +692,8 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
             />
           </Field>
           <Field label={t("completer.fRegion")} highlight={hl("region")}><input style={inp("region")} value={f.region ?? ""} onChange={(e) => set("region", e.target.value)} placeholder={t("completer.phRegion")} /></Field>
-          <Field label={t("completer.fVille")} required highlight={hl("ville")}><input style={inp("ville")} value={f.ville} onChange={(e) => set("ville", e.target.value)} /></Field>
-          <Field label={t("completer.fCommission")} required highlight={hl("commission_id")} info={t("completer.iCommission")}>
+          <Field label={t("completer.fVille")} required champ="ville" manquant={manque("ville")} highlight={hl("ville")}><input style={inp("ville")} value={f.ville} onChange={(e) => set("ville", e.target.value)} /></Field>
+          <Field label={t("completer.fCommission")} required champ="commission_id" manquant={manque("commission_id")} highlight={hl("commission_id")} info={t("completer.iCommission")}>
             <select style={inp("commission_id")} value={f.commission_id ?? ""} onChange={(e) => set("commission_id", e.target.value)}>
               <option value="">{t("completer.selectPlaceholder")}</option>
               {commissions.map((c) => <option key={c.id} value={c.id}>{uniteLabel(c)}</option>)}
@@ -600,7 +705,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
               {groupes.map((g) => <option key={g.id} value={g.nom}>{g.nom}</option>)}
             </select>
           </Field>
-          <Field label={t("completer.fRattachement")} required highlight={hl("intendance_id") || hl("coordination_id")} info={t("completer.iRattachement")}>
+          <Field label={t("completer.fRattachement")} required champ="intendance_id" manquant={manque("intendance_id") || manque("coordination_id")} highlight={hl("intendance_id") || hl("coordination_id")} info={t("completer.iRattachement")}>
             <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
               {AXES.map((a) => {
                 const actif = axe === a.value;
@@ -631,7 +736,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
               </select>
             )}
           </Field>
-          <Field label={t("completer.fTribu")} required highlight={hl("tribu_id")}>
+          <Field label={t("completer.fTribu")} required champ="tribu_id" manquant={manque("tribu_id")} highlight={hl("tribu_id")}>
             <select style={inp("tribu_id")} value={f.tribu_id ?? ""} onChange={(e) => set("tribu_id", e.target.value)}>
               <option value="">{t("completer.selectPlaceholder")}</option>
               {tribus.map((tr) => <option key={tr.id} value={tr.id}>{tr.nom}</option>)}
@@ -642,8 +747,59 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
 
       {step === 2 && (
         <>
-          <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "14px 2px 2px" }}>{t("completer.secEngagement")}</p>
-          <Field label={t("profil.statut")} highlight={hl("type_membre")} info={t("profil.statutInfo")}>
+          {/* The community's own member code, asked first and on its own.
+              It used to sit far down this step between two other fields, and members
+              read past it: it is a second identifier, issued by the community and
+              distinct from the matricule this platform generates, so nobody can
+              reissue it if it is lost here. Given its own block at the top, it is
+              read before anything competes with it. */}
+          <div style={{ border: `1px solid ${T.b600}`, background: T.tintb, borderRadius: 13, padding: "10px 13px 14px", margin: "12px 0 4px" }}>
+            <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "2px 0 0" }}>{t("completer.secCodeMembre")}</p>
+            <p style={{ fontSize: 11.5, color: T.ink, lineHeight: 1.5, margin: "6px 0 2px" }}>{t("completer.noteCodeMembre")}</p>
+            {/* Asked before the code itself, and answered "oui" to begin with: the
+                code is issued to every member, so having one is the ordinary case
+                and the exception is what deserves an explicit act. Saying "non"
+                closes the field rather than leaving an empty box the member might
+                read as optional. */}
+            <Field label={t("completer.fACodeMembre")} champ="a_code_membre" info={t("completer.iACodeMembre")}>
+              <select
+                style={inp("a_code_membre")}
+                value={f.a_code_membre === false ? "non" : "oui"}
+                onChange={(e) => {
+                  const possede = e.target.value === "oui";
+                  set("a_code_membre", possede);
+                  // Clearing on "non" keeps the record consistent with what was just
+                  // declared, instead of storing a code beside a statement that
+                  // there is none.
+                  if (!possede) set("code_membre", "");
+                }}
+              >
+                <option value="oui">{t("completer.aCodeMembreOui")}</option>
+                <option value="non">{t("completer.aCodeMembreNon")}</option>
+              </select>
+            </Field>
+            {f.a_code_membre === false ? (
+              // What happens next, said now. A member who is told only "you cannot
+              // fill this in" assumes the matter is closed; what they need to know
+              // is that the field reopens, and on what.
+              <p style={{ fontSize: 11.5, color: T.ink, background: T.warnbg, border: `1px solid ${T.warn}`, borderRadius: 11, padding: "10px 12px", lineHeight: 1.55, margin: "10px 0 2px" }}>
+                {t("completer.noteSansCodeMembre")}
+              </p>
+            ) : (
+              <Field label={t("completer.fCodeMembre")} champ="code_membre" highlight={hl("code_membre")} info={t("completer.iCodeMembre")}>
+                <input
+                  style={{ ...inp("code_membre"), textTransform: "uppercase", fontFamily: T.fm, letterSpacing: 1, fontSize: 15 }}
+                  value={f.code_membre ?? ""}
+                  onChange={(e) => set("code_membre", e.target.value.toUpperCase())}
+                  placeholder={t("completer.phCodeMembre")}
+                  maxLength={32}
+                />
+              </Field>
+            )}
+          </div>
+
+          <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "18px 2px 2px" }}>{t("completer.secEngagement")}</p>
+          <Field label={t("profil.statut")} champ="type_membre" highlight={hl("type_membre")} info={t("profil.statutInfo")}>
             <select style={inp("type_membre")} value={f.type_membre ?? ""} onChange={(e) => set("type_membre", e.target.value)}>
               <option value="">{t("completer.selectPlaceholder")}</option>
               {niveaux.map((n) => <option key={n.cle} value={n.cle}>{n.libelle}</option>)}
@@ -661,8 +817,17 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           {/* Block 1: consecration title (Berger/Bergere). The only current title
               is Berger, so it is asked as a yes/no; the name feeds berger_declare. */}
           <p style={{ fontWeight: 700, fontSize: 13, color: T.ink, margin: "8px 2px 4px" }}>{t("completer.blocTitre")}</p>
-          <Field label={t("completer.fBergerDeclare")} highlight={hl("berger_declare")} info={t("completer.iBergerDeclare")}>
-            <select style={inp("berger_declare")} value={f.berger_declare ? "oui" : "non"} onChange={(e) => set("berger_declare", e.target.value === "oui")}>
+          {/* Nothing is preselected. Showing "non" before the member has answered is
+              an answer the platform gives on their behalf: they scroll past it,
+              nothing looks unanswered, and a declaration that should have been made
+              never is. The empty option is the honest starting state. */}
+          <Field label={t("completer.fBergerDeclare")} champ="berger_declare" highlight={hl("berger_declare")} info={t("completer.iBergerDeclare")}>
+            <select
+              style={inp("berger_declare")}
+              value={f.berger_declare === true ? "oui" : f.berger_declare === false ? "non" : ""}
+              onChange={(e) => set("berger_declare", e.target.value === "" ? null : e.target.value === "oui")}
+            >
+              <option value="">{t("completer.selectPlaceholder")}</option>
               <option value="non">{t("completer.bergerNon")}</option>
               <option value="oui">{t("completer.bergerOui")}</option>
             </select>
@@ -682,7 +847,12 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
                 />
               </Field>
               {!f.genre && <p style={{ fontSize: 11, color: T.warn, margin: "4px 2px 0" }}>{t("completer.bergerGenreManquant")}</p>}
-              <Field label={t("completer.fBergerNom")} highlight={hl("berger_nom_declare")} info={t("completer.iBergerNom")}>
+              {/* Required from the moment the member says they are a berger. The
+                  consecration name IS the declaration: "Berger" with no name names
+                  nobody, and the administration cannot verify what it cannot read.
+                  It only exists inside this branch, so answering "non" removes the
+                  question rather than leaving an obligation nobody can meet. */}
+              <Field label={t("completer.fBergerNom")} required champ="berger_nom_declare" manquant={manque("berger_nom_declare")} highlight={hl("berger_nom_declare")} info={t("completer.iBergerNom")}>
                 <input
                   style={inp("berger_nom_declare")}
                   value={f.berger_nom_declare ?? ""}
@@ -725,20 +895,19 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           {souhaitees.length > 0 && (
             <p style={{ fontSize: 11, color: T.warn, margin: "10px 2px 0" }}>{t("completer.fonctionsAttente")}</p>
           )}
-          {/* Community journey: the external member code (uppercased, unique,
-              distinct from the ADSUM matricule), the entry date and the promotion.
-              All optional, declared by the member, editable later via requests. */}
-          <Field label={t("completer.fCodeMembre")} highlight={hl("code_membre")} info={t("completer.iCodeMembre")}>
-            <input style={{ ...inp("code_membre"), textTransform: "uppercase" }} value={f.code_membre ?? ""} onChange={(e) => set("code_membre", e.target.value.toUpperCase())} placeholder={t("completer.phCodeMembre")} maxLength={32} />
-          </Field>
-          <Field label={t("completer.fDateEntree")} required highlight={hl("date_entree")} info={t("completer.iDateEntree")}>
+          <Field label={t("completer.fDateEntree")} required champ="date_entree" manquant={manque("date_entree")} highlight={hl("date_entree")} info={t("completer.iDateEntree")}>
             <input type="date" style={inp("date_entree")} value={f.date_entree ?? ""} onChange={(e) => set("date_entree", e.target.value)} />
           </Field>
           {/* Leadership-team SELF-DECLARATION: reviewed and confirmed by the
               administration (adding a real membership in the special-teams page). The
               declaration alone never grants anything. */}
-          <Field label={t("completer.fEquipeDirigeante")} highlight={hl("equipe_dirigeante_declaree")} info={t("completer.iEquipeDirigeante")}>
-            <select style={inp("equipe_dirigeante_declaree")} value={f.equipe_dirigeante_declaree ? "oui" : "non"} onChange={(e) => set("equipe_dirigeante_declaree", e.target.value === "oui")}>
+          <Field label={t("completer.fEquipeDirigeante")} champ="equipe_dirigeante_declaree" highlight={hl("equipe_dirigeante_declaree")} info={t("completer.iEquipeDirigeante")}>
+            <select
+              style={inp("equipe_dirigeante_declaree")}
+              value={f.equipe_dirigeante_declaree === true ? "oui" : f.equipe_dirigeante_declaree === false ? "non" : ""}
+              onChange={(e) => set("equipe_dirigeante_declaree", e.target.value === "" ? null : e.target.value === "oui")}
+            >
+              <option value="">{t("completer.selectPlaceholder")}</option>
               <option value="non">{t("completer.equipeDirigeanteNon")}</option>
               <option value="oui">{t("completer.equipeDirigeanteOui")}</option>
             </select>
@@ -756,38 +925,33 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           <Field label={t("completer.fComplement")} highlight={hl("adresse_complement")}><input style={inp("adresse_complement")} value={f.adresse_complement ?? ""} onChange={(e) => set("adresse_complement", e.target.value)} placeholder={t("completer.phComplement")} /></Field>
 
           <p style={{ fontFamily: T.fm, fontSize: 9, letterSpacing: 0.8, color: T.b600, margin: "18px 2px 2px" }}>{t("completer.secVie")}</p>
-          <Field label={t("completer.fSituation")} required highlight={hl("situation_matrimoniale")}>
+          <Field label={t("completer.fSituation")} required champ="situation_matrimoniale" manquant={manque("situation_matrimoniale")} highlight={hl("situation_matrimoniale")}>
             <select
               style={inp("situation_matrimoniale")}
               value={f.situation_matrimoniale ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                set("situation_matrimoniale", v);
-                // The relational "cheminement" question only applies to a single or
-                // in-couple member; leaving those states clears any stored answer.
-                if (v !== "celibataire" && v !== "en_couple") set("en_cheminement", null);
-              }}
+              onChange={(e) => set("situation_matrimoniale", e.target.value)}
             >
               <option value="">{t("completer.selectPlaceholder")}</option>
               {SITUATIONS.map((s) => <option key={s.value} value={s.value}>{t(s.labelKey)}</option>)}
             </select>
           </Field>
-          {/* Single or in-couple: ask whether they are "en cheminement" (in a
-              relationship progressing toward marriage). Optional; the other person is
-              never asked. Feeds community statistics. */}
-          {(f.situation_matrimoniale === "celibataire" || f.situation_matrimoniale === "en_couple") && (
-            <Field label={t("completer.fCheminement")} highlight={hl("en_cheminement")} info={t("completer.iCheminement")}>
-              <select
-                style={inp("en_cheminement")}
-                value={f.en_cheminement === true ? "oui" : f.en_cheminement === false ? "non" : ""}
-                onChange={(e) => set("en_cheminement", e.target.value === "" ? null : e.target.value === "oui")}
-              >
-                <option value="">{t("completer.selectPlaceholder")}</option>
-                <option value="oui">{t("completer.cheminementOui")}</option>
-                <option value="non">{t("completer.cheminementNon")}</option>
-              </select>
-            </Field>
-          )}
+          {/* Asked of everyone, whatever they answered above, and never cleared by
+              that answer. It used to appear only for a single or in-couple member,
+              which reads one organisation's meaning of those words into the form:
+              what counts as "célibataire" differs from one community to the next, and
+              this product is meant to serve more than one. The question stays
+              optional, so a member it does not concern simply leaves it empty. */}
+          <Field label={t("completer.fCheminement")} champ="en_cheminement" highlight={hl("en_cheminement")} info={t("completer.iCheminement")}>
+            <select
+              style={inp("en_cheminement")}
+              value={f.en_cheminement === true ? "oui" : f.en_cheminement === false ? "non" : ""}
+              onChange={(e) => set("en_cheminement", e.target.value === "" ? null : e.target.value === "oui")}
+            >
+              <option value="">{t("completer.selectPlaceholder")}</option>
+              <option value="oui">{t("completer.cheminementOui")}</option>
+              <option value="non">{t("completer.cheminementNon")}</option>
+            </select>
+          </Field>
           {/* The kind of marriage only makes sense once the member declares they
               are married; it is one of the fields the backend accepts at
               registration (dot / religious / both / civil). */}
@@ -836,6 +1000,8 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           pieceProvided={pieceProvided}
           photoHighlight={hl("photo")}
           pieceHighlight={hl("piece")}
+          photoManquant={manque("photo")}
+          pieceManquant={manque("piece")}
           photoFile={photoFile}
           pieceFile={pieceFile}
           pieceType={pieceType}
@@ -845,6 +1011,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
             // simply removes the staged photo.
             if (cropSrc) URL.revokeObjectURL(cropSrc);
             if (file) {
+              oublierManquant("photo");
               setCropSrc(URL.createObjectURL(file));
             } else {
               setCropSrc(null);
@@ -855,6 +1022,7 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
           onPieceFile={(file) => {
             setPieceFile(file);
             setPieceDejaEnvoyee(false);
+            if (file) oublierManquant("piece");
           }}
           onPieceType={setPieceType}
         />
@@ -881,46 +1049,19 @@ export function CompleterProfil({ token, profile, statut, motif, champsACorriger
       )}
 
       {step === 5 && (
-        <>
-          <p style={{ fontSize: 12, color: T.mut, lineHeight: 1.5, margin: "10px 2px 8px" }}>{t("completer.recapIntro")}</p>
-          {/* The ADSUM matricule is generated by the system at account creation and
-              can never be typed or edited: it is shown here read-only so the member
-              knows their reference before submitting. */}
-          {profile?.matricule && (
-            <RecapRow label={t("completer.recapMatricule")} value={profile.matricule} ok />
-          )}
-          {f.code_membre?.trim() && (
-            <RecapRow label={t("completer.fCodeMembre")} value={f.code_membre.toUpperCase()} ok />
-          )}
-          <RecapRow label={t("completer.recapNom")} value={`${f.prenoms} ${f.nom}`.trim() || t("completer.recapEmpty")} ok={!!(f.prenoms && f.nom)} />
-          <RecapRow label={t("completer.recapTelephone")} value={f.telephone ? `${f.indicatif_telephone ?? ""} ${f.telephone}` : t("completer.recapEmpty")} ok={!!f.telephone} />
-          <RecapRow label={t("completer.recapPaysVille")} value={[f.pays, f.ville].filter(Boolean).join(", ") || t("completer.recapEmpty")} ok={!!(f.pays && f.ville)} />
-          <RecapRow label={t("completer.recapCommission")} value={commissionNom || t("completer.recapNotChosenF")} ok={!!f.commission_id} />
-          <RecapRow label={t("completer.recapRattachement")} value={rattachementTxt || t("completer.recapNotChosenM")} ok={axeOk} />
-          <RecapRow label={t("completer.recapTribu")} value={tribuNom || t("completer.recapNotChosenF")} ok={!!f.tribu_id} />
-          {f.berger_declare && (
-            <RecapRow label={t("completer.fBergerDeclare")} value={`${t("completer.bergerOui")}${f.berger_nom_declare ? ` (${f.berger_nom_declare})` : ""}`} ok />
-          )}
-          {souhaitees.length > 0 && (
-            <RecapRow
-              label={t("completer.blocFonction")}
-              value={souhaitees
-                .map((s) => {
-                  const fn = fonctions.find((x) => x.cle === s.cle);
-                  const lib = fn ? labelFonction(fn) : s.cle;
-                  return s.perimetre ? `${lib} (${s.perimetre})` : lib;
-                })
-                .join(", ")}
-              ok
-            />
-          )}
-          {(f.baptise || f.premiere_communion || f.confirme) && (
-            <RecapRow label={t("completer.secVieSpirituelle")} value={[f.baptise ? t("completer.fBaptise") : "", f.premiere_communion ? t("completer.fPremiereCommunion") : "", f.confirme ? t("completer.fConfirme") : ""].filter(Boolean).join(", ")} ok />
-          )}
-          <RecapRow label={t("completer.recapPhoto")} value={photoOk ? t("completer.recapProvided") : t("completer.recapMissing")} ok={photoOk} />
-          <RecapRow label={t("completer.recapPiece")} value={pieceOk ? t("completer.recapProvided") : t("completer.recapMissing")} ok={pieceOk} />
-          <RecapRow label={t("completer.recapSignature")} value={signed ? t("completer.recapVerified") : t("completer.recapMissing")} ok={signed} />
-        </>
+        <CompleterRecap
+          profile={profile}
+          f={f}
+          commissionNom={commissionNom}
+          rattachementTxt={rattachementTxt}
+          tribuNom={tribuNom}
+          axeOk={axeOk}
+          fonctions={fonctions}
+          labelFonction={labelFonction}
+          photoOk={photoOk}
+          pieceOk={pieceOk}
+          signed={signed}
+        />
       )}
 
       {error && <p style={{ color: T.dng, fontSize: 12.5, marginTop: 10 }}>{error}</p>}

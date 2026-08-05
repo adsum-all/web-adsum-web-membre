@@ -17,11 +17,14 @@ import {
   photoObjectPosition,
   setFuseau,
 } from "./api.js";
+import { type RaisonFin, messageFinDeSession, surFinDeSession } from "./sessionExpiree.js";
+import { mot, useMarque } from "./useMarque.js";
 import { type Lang, LangContext, tr, useT } from "./i18n.js";
 import { clearApiCache, useOnline } from "./offline.js";
 import { civilName, initials as memberInitials } from "./name.js";
 import { T } from "./proto.js";
 import { CompleterProfil } from "./components/CompleterProfil.js";
+import { PastilleTribu } from "./components/PastilleTribu.js";
 import { Activites } from "./components/Activites.js";
 import { Calendrier } from "./components/Calendrier.js";
 import { Carte } from "./components/Carte.js";
@@ -46,6 +49,7 @@ import { MesApplications } from "./components/MesApplications.js";
 import { Settings } from "./components/Settings.js";
 import { Suivi } from "./components/Suivi.js";
 import { TabBar, type TabId } from "./components/TabBar.js";
+import { activerPush, desactiverPush } from "./pushMobile.js";
 
 type ViewId =
   | "dossier"
@@ -122,6 +126,10 @@ export function App(): JSX.Element {
   const [view, setView] = useState<ViewId | null>(null);
   const [activeEvent, setActiveEvent] = useState<EvenementOut | null>(null);
   const [authView, setAuthView] = useState<"login" | "forgot">("login");
+  const marque = useMarque();
+  // Why the last session ended, shown on the sign-in screen so the return is
+  // explained instead of abrupt.
+  const [finDeSession, setFinDeSession] = useState<RaisonFin | null>(null);
   const [firstLogin, setFirstLogin] = useState<AuthContext | null>(null);
   const [inscription, setInscription] = useState<InscriptionStatut | null>(null);
   const [inscriptionError, setInscriptionError] = useState(false);
@@ -155,6 +163,10 @@ export function App(): JSX.Element {
       saveToken(jwt);
       setToken(jwt);
       setCompteNonMembre(false);
+      // Register this phone for notifications. Does nothing on the web, and nothing
+      // in the application until the organisation has configured push, so it costs a
+      // signed-in member on a browser exactly one no-op.
+      void activerPush(jwt);
       refreshInscription(jwt);
       void getMembreProfile(jwt)
         .then(setProfile)
@@ -303,12 +315,34 @@ export function App(): JSX.Element {
         setFirstLogin(ctx);
         return;
       }
+      setFinDeSession(null);
       enter(ctx.token);
     },
     [enter],
   );
 
+  // The server said the session is over. Every screen used to show this as a red
+  // "Session expirée" banner on a page that no longer worked, which reads as a defect
+  // rather than the ordinary end of a session. The member comes back to sign in, and
+  // the screen says why.
+  useEffect(() => surFinDeSession((raison) => {
+    clearApiCache();
+    saveToken(null);
+    setToken(null);
+    setProfile(null);
+    setView(null);
+    setFirstLogin(null);
+    setInscription(null);
+    setActions(null);
+    setAuthView("login");
+    setFinDeSession(raison);
+  }), []);
+
   const logout = useCallback(() => {
+    // Withdraw this phone BEFORE the session goes: afterwards the platform has no way
+    // to know which device to silence, and notifications keep arriving on a phone
+    // nobody is signed in on. Not awaited, so signing out stays immediate.
+    if (token) void desactiverPush(token);
     if (token) void logoutSession(token).catch(() => undefined);
     clearApiCache();
     saveToken(null);
@@ -388,7 +422,11 @@ export function App(): JSX.Element {
         {authView === "forgot" ? (
           <Forgot onBack={() => setAuthView("login")} onDone={() => setAuthView("login")} />
         ) : (
-          <Login onAuth={onAuth} onForgot={() => setAuthView("forgot")} />
+          <Login
+            onAuth={onAuth}
+            onForgot={() => setAuthView("forgot")}
+            avis={finDeSession ? messageFinDeSession(finDeSession) : undefined}
+          />
         )}
       </Shell>
     );
@@ -400,7 +438,7 @@ export function App(): JSX.Element {
     return (
       <Shell>
         <header className="topbar">
-          <span className="topbar-title">ADSUM</span>
+          <span className="topbar-title">{marque.marque}</span>
           <button type="button" className="bell" onClick={logout} aria-label={t("app.aria.quit")}>
             ⏻
           </button>
@@ -409,11 +447,17 @@ export function App(): JSX.Element {
           <div style={{ textAlign: "center", padding: "2rem 1rem", maxWidth: 420, margin: "0 auto" }}>
             <h2>{t("app.nonMembre.title")}</h2>
             <p style={{ color: T.mut, lineHeight: 1.6 }}>{t("app.nonMembre.body")}</p>
-            <p style={{ color: T.mut }}>
-              <a href="https://adsum-back-office.pages.dev" style={{ color: T.tintbf, fontWeight: 600 }}>
-                {t("app.nonMembre.link")}
-              </a>
-            </p>
+            {/* Shown only when the organisation has declared where its back office
+                lives. The address used to be a literal here, so every deployment of
+                this product sent its own members to this organisation's back office.
+                No address configured means no link, rather than a wrong one. */}
+            {marque.url_back_office && (
+              <p style={{ color: T.mut }}>
+                <a href={marque.url_back_office} style={{ color: T.tintbf, fontWeight: 600 }}>
+                  {t("app.nonMembre.link")}
+                </a>
+              </p>
+            )}
             <button type="button" className="btn-secondary" onClick={logout} style={{ marginTop: 12 }}>
               {t("settings.logout")}
             </button>
@@ -905,6 +949,7 @@ function Profil({
   demandesBadge?: number;
 }): JSX.Element {
   const t = useT();
+  const marqueProfil = useMarque();
   const fullName =
     profile && (profile.prenoms || profile.nom || profile.nom_affichage)
       ? civilName(profile)
@@ -976,16 +1021,23 @@ function Profil({
 
       <div style={{ background: T.surf, border: `1px solid ${T.line}`, borderRadius: 14, overflow: "hidden", margin: "4px 0 16px" }}>
         {[
-          [t("app.profil.commission"), profile?.commission ?? "-"],
-          [t("app.profil.tribu"), profile?.tribu ?? "-"],
-          [t("app.profil.since"), since ? String(since) : "-"],
-        ].map(([label, value], i) => (
+          // Named with the organisation's own words: a parish says secteur where
+          // this one says commission, and the label must follow the data.
+          { label: mot(marqueProfil, "commission", "Singulier", t("app.profil.commission")), value: profile?.commission ?? "-" },
+          // The tribe carries its colour: members recognise their own by it before
+          // they read the word. Nothing is drawn when no colour is set.
+          { label: mot(marqueProfil, "tribu", "Singulier", t("app.profil.tribu")), value: profile?.tribu ?? "-", couleur: profile?.tribu_couleur },
+          { label: t("app.profil.since"), value: since ? String(since) : "-" },
+        ].map(({ label, value, couleur }, i) => (
           <div
             key={label}
-            style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", borderBottom: i < 2 ? `1px solid ${T.line}` : "none" }}
+            style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "12px 14px", borderBottom: i < 2 ? `1px solid ${T.line}` : "none" }}
           >
             <span style={{ fontSize: 12.5, color: T.mut }}>{label}</span>
-            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{value}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 7 }}>
+              <PastilleTribu couleur={couleur} />
+              {value}
+            </span>
           </div>
         ))}
       </div>

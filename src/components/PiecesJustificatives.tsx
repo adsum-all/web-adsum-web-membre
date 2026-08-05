@@ -13,12 +13,18 @@ const PIECE_TYPES = [
   { value: "carte_consulaire", labelKey: "pieces.typeConsulaire" },
 ];
 
-/** Border colour for a field flagged in champs_a_corriger. */
-function fieldBorder(highlight: boolean): string {
+/**
+ * Border colour of a document field.
+ *
+ * A required document still missing wins over a correction request: the member
+ * cannot move on until it is provided, so that is the more urgent of the two.
+ */
+function fieldBorder(highlight: boolean, manquant: boolean): string {
+  if (manquant) return T.dng;
   return highlight ? T.warn : T.line;
 }
 
-function LabelRow({ label, required, highlight }: { label: string; required?: boolean; highlight: boolean }): JSX.Element {
+function LabelRow({ label, required, highlight, manquant }: { label: string; required?: boolean; highlight: boolean; manquant?: boolean }): JSX.Element {
   const t = useT();
   return (
     <span style={lbl}>
@@ -26,6 +32,11 @@ function LabelRow({ label, required, highlight }: { label: string; required?: bo
       {highlight && (
         <span style={{ marginLeft: 6, fontSize: 8.5, fontWeight: 700, color: T.warn, background: T.warnbg, borderRadius: 6, padding: "2px 6px" }}>
           {t("correction.fieldTag").toUpperCase()}
+        </span>
+      )}
+      {manquant && !highlight && (
+        <span style={{ marginLeft: 6, fontSize: 8.5, fontWeight: 700, color: T.dng, background: T.tintr, borderRadius: 6, padding: "2px 6px" }}>
+          {t("completer.tagManquant").toUpperCase()}
         </span>
       )}
     </span>
@@ -43,6 +54,8 @@ export function DocumentPicker({
   accept,
   alreadyProvided,
   highlight,
+  manquant = false,
+  champ,
   file,
   onFile,
 }: {
@@ -50,6 +63,10 @@ export function DocumentPicker({
   accept: string;
   alreadyProvided: boolean;
   highlight: boolean;
+  /** Required and still missing when the member tried to move on. */
+  manquant?: boolean;
+  /** Names the field so the step can scroll to it. */
+  champ?: string;
   file: File | null;
   onFile: (f: File | null) => void;
 }): JSX.Element {
@@ -58,8 +75,8 @@ export function DocumentPicker({
   const showExisting = alreadyProvided && !file;
 
   return (
-    <div>
-      <LabelRow label={label} required={!alreadyProvided} highlight={highlight} />
+    <div data-champ={champ}>
+      <LabelRow label={label} required={!alreadyProvided} highlight={highlight} manquant={manquant} />
       <input ref={ref} type="file" accept={accept} hidden onChange={(e) => onFile(e.target.files?.[0] ?? null)} />
       {showExisting ? (
         <div style={{ border: `1px solid ${T.ok}`, borderRadius: 11, padding: "10px 12px", background: T.okbg, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -75,7 +92,7 @@ export function DocumentPicker({
         <div
           onClick={() => ref.current?.click()}
           className="tap"
-          style={{ ...inp, border: `1px solid ${fieldBorder(highlight)}`, color: file ? T.ink : T.mut, display: "flex", alignItems: "center", justifyContent: "space-between" }}
+          style={{ ...inp, border: `1.5px solid ${fieldBorder(highlight, manquant)}`, background: manquant ? T.tintr : T.surf, color: file ? T.ink : T.mut, display: "flex", alignItems: "center", justifyContent: "space-between" }}
         >
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file ? file.name : t("pieces.chooseFile")}</span>
           <span style={{ color: file ? T.ok : T.b600 }}>{file ? "✓" : "⤴"}</span>
@@ -94,6 +111,8 @@ export function PiecesJustificatives({
   pieceProvided,
   photoHighlight,
   pieceHighlight,
+  photoManquant = false,
+  pieceManquant = false,
   photoFile,
   pieceFile,
   pieceType,
@@ -105,6 +124,9 @@ export function PiecesJustificatives({
   pieceProvided: boolean;
   photoHighlight: boolean;
   pieceHighlight: boolean;
+  /** Required and still missing when the member tried to move on. */
+  photoManquant?: boolean;
+  pieceManquant?: boolean;
   photoFile: File | null;
   pieceFile: File | null;
   pieceType: string;
@@ -122,6 +144,8 @@ export function PiecesJustificatives({
         accept="image/*"
         alreadyProvided={photoProvided}
         highlight={photoHighlight}
+        manquant={photoManquant}
+        champ="photo"
         file={photoFile}
         onFile={onPhotoFile}
       />
@@ -146,6 +170,8 @@ export function PiecesJustificatives({
         accept="image/*,application/pdf"
         alreadyProvided={pieceProvided}
         highlight={pieceHighlight}
+        manquant={pieceManquant}
+        champ="piece"
         file={pieceFile}
         onFile={onPieceFile}
       />

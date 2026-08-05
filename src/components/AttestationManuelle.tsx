@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { type AttestationInfo, getAttestation, uploadAttestation, uploadDocument } from "../api.js";
 import { useT } from "../i18n.js";
 import { attestationPdf, downloadBlob, printBlob } from "../pdf.js";
+import { useMarque } from "../useMarque.js";
 import { T } from "../proto.js";
 import { useResource } from "../useResource.js";
 
@@ -19,10 +20,31 @@ function joursRestants(echeance: string | null): number | null {
   return Math.round(diffMs / 86_400_000);
 }
 
+/** Turn an organisation name into something safe to save on any filesystem.
+ *
+ *  Accents are folded rather than dropped so "Paroisse Sainte-Thérèse" becomes
+ *  "Paroisse-Sainte-Therese" and not "Paroisse-Sainte-Thrse". Anything left that is
+ *  neither a letter, a digit nor a dash goes, because Windows refuses several of the
+ *  punctuation marks an organisation may legitimately carry in its name.
+ */
+function nomDeFichier(organisation: string): string {
+  // Built from escapes rather than written as a literal range: the combining marks
+  // are invisible in an editor, so a stray keystroke inside them would silently stop
+  // folding accents and nobody would see why.
+  const marquesCombinantes = new RegExp("[\\u0300-\\u036f]", "g");
+  const sansAccent = organisation.normalize("NFD").replace(marquesCombinantes, "");
+  const propre = sansAccent.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return propre || "Attestation";
+}
+
 // Download and print happen entirely inside the app (a real PDF built in the
 // browser, then a Blob download or a hidden-iframe print): never a new page.
-function telechargerAttestation(titre: string, texte: string): void {
-  downloadBlob(attestationPdf(titre, texte), "Attestation-Sacerdoce-Royal.pdf");
+//
+// The organisation is passed in rather than written here: the file lands in the
+// member's downloads folder, where a name from another organisation is the most
+// visible way this product could betray whose platform it is.
+function telechargerAttestation(titre: string, texte: string, organisation: string): void {
+  downloadBlob(attestationPdf(titre, texte), `Attestation-${nomDeFichier(organisation)}.pdf`);
 }
 function imprimerAttestation(titre: string, texte: string): void {
   printBlob(attestationPdf(titre, texte));
@@ -79,6 +101,7 @@ function Echeance({ echeance, t }: { echeance: string | null; t: (k: string) => 
 }
 
 export function AttestationManuelle({ token }: { token: string }): JSX.Element | null {
+  const marque = useMarque();
   const res = useResource<AttestationInfo>(() => getAttestation(token), [token]);
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -289,7 +312,7 @@ export function AttestationManuelle({ token }: { token: string }): JSX.Element |
 
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <div
-          onClick={() => telechargerAttestation(t("attest.title"), current.texte)}
+          onClick={() => telechargerAttestation(t("attest.title"), current.texte, marque.organisation)}
           className="tap"
           style={{
             flex: 1,

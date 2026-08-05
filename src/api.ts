@@ -2,6 +2,7 @@
 // point at the deployed API (https://adsum-api.vercel.app) or a local one.
 
 import { computePhash } from "./phash.js";
+import { signalerFinDeSession } from "./sessionExpiree.js";
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "https://adsum-api.vercel.app";
 
@@ -84,7 +85,10 @@ export interface MembreProfile {
   intendant: string | null;
   intendant_titre: string | null;
   berger: string | null;
+  a_code_membre?: boolean | null;
   tribu: string | null;
+  /** The colour the tribe is known by, hexadecimal, or null when none is set. */
+  tribu_couleur?: string | null;
   patriarche: string | null;
   coordination: string | null;
   coordination_id?: string | null;
@@ -423,11 +427,21 @@ async function readDetail(res: Response): Promise<unknown> {
   }
 }
 
+/** Tell the application shell the session is over, with the reason the server gives.
+ *  Called from every authenticated helper: a member left on a screen that no longer
+ *  works, with a red "Session expirée" banner, reads as a defect rather than the
+ *  ordinary end of a session. */
+function reporterFinDeSession(res: Response): void {
+  const motif = res.headers.get("X-Session-Fin");
+  signalerFinDeSession(motif === "inactivite" ? "inactivite" : motif === "revoquee" ? "revoquee" : "expiree");
+}
+
 async function authedGet<T>(path: string, token: string, onError: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
+    if (res.status === 401) reporterFinDeSession(res);
     throw new ApiError(res.status === 401 ? apiMsg("Session expirée", "Session expired") : onError, res.status);
   }
   return (await res.json()) as T;
@@ -443,6 +457,8 @@ export interface LoginResult {
   // Canonical account e-mail once the password is validated, so a matricule or
   // member-code sign-in still drives the e-mail based first-login flow correctly.
   email: string | null;
+  /** Why the mailbox refused our last messages, when it did. Null otherwise. */
+  alerteEmail: string | null;
 }
 
 /** Stable per-device id kept in localStorage, sent so the server can remember a
@@ -478,12 +494,13 @@ export async function login(identifiant: string, password: string): Promise<Logi
     throw new ApiError(apiMsg("Connexion au serveur impossible. Vérifiez votre réseau.", "Cannot reach the server. Check your network."), 0);
   }
   if (!res.ok) throw loginError(res.status);
-  const data = (await res.json()) as { otp_required?: boolean; access_token?: string | null; doit_changer_mdp?: boolean; canal?: string | null; email?: string | null };
+  const data = (await res.json()) as { otp_required?: boolean; access_token?: string | null; doit_changer_mdp?: boolean; canal?: string | null; email?: string | null; alerte_email?: string | null };
   return {
     otpRequired: Boolean(data.otp_required),
     token: data.access_token ?? null,
     doitChangerMdp: Boolean(data.doit_changer_mdp),
     canal: data.canal ?? null,
+    alerteEmail: data.alerte_email ?? null,
     email: data.email ?? null,
   };
 }
@@ -508,7 +525,9 @@ export async function loginVerify(
   }
   if (!res.ok) throw loginError(res.status);
   const data = (await res.json()) as { access_token?: string | null; doit_changer_mdp?: boolean; email?: string | null };
-  return { otpRequired: false, token: data.access_token ?? null, doitChangerMdp: Boolean(data.doit_changer_mdp), canal: null, email: data.email ?? null };
+  // alerteEmail is null here on purpose: the code was just accepted, so whatever the
+  // mailbox did earlier no longer stands between this member and their account.
+  return { otpRequired: false, token: data.access_token ?? null, doitChangerMdp: Boolean(data.doit_changer_mdp), canal: null, email: data.email ?? null, alerteEmail: null };
 }
 
 /** Re-send the login code on a chosen channel. Telegram is the default at login;
@@ -1239,6 +1258,7 @@ async function authedPost<T>(path: string, token: string, body: unknown, onError
   });
   if (!res.ok) {
     const detail = await readDetail(res);
+    if (res.status === 401) reporterFinDeSession(res);
     throw new ApiError(res.status === 400 ? apiMsg("Requête invalide", "Invalid request") : res.status === 401 ? apiMsg("Session expirée", "Session expired") : onError, res.status, detail);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
@@ -1455,11 +1475,16 @@ export interface ProfilFields {
   confirme?: boolean;
   premiere_communion?: boolean;
   code_membre?: string;
+  /** Whether the member says they hold an organisation-issued code. */
+  a_code_membre?: boolean | null;
   date_entree?: string;
   promotion?: string;
-  berger_declare?: boolean;
+  // Three states, not two. Null means the member has not answered yet, and it is
+  // distinct from "no": the form preselected "no" before anybody had chosen, so a
+  // declaration that should have been made read as a refusal nobody had made.
+  berger_declare?: boolean | null;
   berger_nom_declare?: string;
-  equipe_dirigeante_declaree?: boolean;
+  equipe_dirigeante_declaree?: boolean | null;
   type_membre?: string;
   fonction_cle?: string;
   // Four-block registration declarations (special functions, functions, particular
@@ -1480,6 +1505,7 @@ async function authedPatch<T>(path: string, token: string, body: unknown, onErro
     body: JSON.stringify(body),
   });
   if (!res.ok) {
+    if (res.status === 401) reporterFinDeSession(res);
     throw new ApiError(res.status === 401 ? apiMsg("Session expirée", "Session expired") : onError, res.status);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
@@ -1493,9 +1519,49 @@ async function authedPut<T>(path: string, token: string, body: unknown, onError:
   });
   if (!res.ok) {
     const detail = await readDetail(res);
+    if (res.status === 401) reporterFinDeSession(res);
     throw new ApiError(res.status === 401 ? apiMsg("Session expirée", "Session expired") : onError, res.status, detail);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+/** Whether this organisation has configured push delivery at all.
+ *
+ *  Asked before the operating system is prompted for the notification permission:
+ *  Android offers that prompt once, and spending it on a channel the organisation
+ *  cannot deliver on buys the member nothing. */
+export async function poussePossible(token: string): Promise<boolean> {
+  try {
+    const res = await authedGet<{ disponible: boolean }>(
+      "/api/v1/membres/me/push-disponible", token, "Indisponible",
+    );
+    return Boolean(res.disponible);
+  } catch {
+    return false;
+  }
+}
+
+/** Register or refresh this device. Idempotent: called at every launch, because the
+ *  push service may have rotated the token while the application was closed. */
+export function enregistrerAppareilPush(
+  token: string, jeton: string, plateforme: string, libelle?: string,
+): Promise<void> {
+  return authedPut<void>(
+    "/api/v1/membres/me/appareils-push", token,
+    { jeton, plateforme, libelle: libelle ?? null }, "Enregistrement impossible",
+  );
+}
+
+/** Stop notifying this device. Called on sign-out, while the session is still valid. */
+export async function retirerAppareilPush(token: string, jeton: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/membres/me/appareils-push`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ jeton }),
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new ApiError(apiMsg("Retrait impossible", "Removal failed"), res.status);
+  }
 }
 
 export function updateProfil(
@@ -1728,6 +1794,7 @@ export async function submitRecensement(
     body: JSON.stringify(reponse),
   });
   if (!res.ok) {
+    if (res.status === 401) reporterFinDeSession(res);
     throw new ApiError(res.status === 401 ? apiMsg("Session expirée", "Session expired") : apiMsg("Envoi impossible", "Sending failed"), res.status);
   }
 }
@@ -1792,4 +1859,46 @@ export async function getFichierBibliotheque(token: string, versionId: string): 
   });
   if (!res.ok) throw new ApiError(apiMsg("Fichier indisponible.", "File unavailable."), res.status);
   return (await res.json()) as { url: string; nom: string | null };
+}
+
+/** The organisation's public identity, readable before signing in.
+ *  The sign-in screen and the header carry a name and a palette, and they are shown
+ *  to somebody with no token yet: written into the code, every deployment would
+ *  greet its members with somebody else's name. */
+/** One term, in the words this organisation uses. */
+export interface MotOrganisation {
+  singulier: string;
+  pluriel: string;
+  article: string;
+  Singulier: string;
+  Pluriel: string;
+  /** Ready to drop into a sentence: "la tribu", "l'intendance". */
+  avec_article: string;
+}
+
+export interface MarquePublique {
+  marque: string;
+  initiale: string;
+  organisation: string;
+  organisation_courte: string;
+  slogan: string | null;
+  logo_url: string | null;
+  site: string | null;
+  /** Where this organisation's other applications are served. Null when the
+   *  organisation has not declared one, which means "offer no link" rather than
+   *  "fall back to somebody else's address". */
+  url_membre: string | null;
+  url_back_office: string | null;
+  url_public: string | null;
+  couleur: string;
+  couleur_sombre: string;
+  /** How this organisation names its units and responsibilities. A parish says
+   *  secteur where this one says intendance, and the interface must follow. */
+  mots: Record<string, MotOrganisation>;
+}
+
+export async function getMarquePublique(): Promise<MarquePublique> {
+  const res = await fetch(`${BASE}/api/v1/marque`);
+  if (!res.ok) throw new ApiError(apiMsg("Identité indisponible.", "Identity unavailable."), res.status);
+  return (await res.json()) as MarquePublique;
 }

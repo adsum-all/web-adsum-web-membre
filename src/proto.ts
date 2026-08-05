@@ -1,3 +1,5 @@
+import { palette } from "./paletteMarque.js";
+
 // Design tokens copied verbatim from the ADSUM member prototype (03-prototype),
 // so the live app matches the high-fidelity design pixel for pixel.
 
@@ -13,11 +15,24 @@ export const T = {
   fd: "'Space Grotesk',sans-serif",
   fu: "'IBM Plex Sans',sans-serif",
   fm: "'IBM Plex Mono',monospace",
-  b400: "#5b82d8",
-  b500: "#3563c9",
-  b600: "#2a4fad",
-  b700: "#223f8a",
-  b900: "#172a5a",
+  // The brand blues follow the colour the organisation configured. Read through
+  // getters so every existing call site keeps working, including the ones that
+  // concatenate alpha onto them, which only works on a hex string.
+  get b400(): string {
+    return palette.b400;
+  },
+  get b500(): string {
+    return palette.b500;
+  },
+  get b600(): string {
+    return palette.b600;
+  },
+  get b700(): string {
+    return palette.b700;
+  },
+  get b900(): string {
+    return palette.b900;
+  },
   ink: "var(--adsum-ink, #16181d)",
   mut: "var(--adsum-mut, #676b73)",
   faint: "var(--adsum-faint, #9498a1)",

@@ -28,6 +28,9 @@ describe("api client", () => {
       doitChangerMdp: false,
       canal: null,
       email: null,
+      // Null when the server says nothing about the mailbox, which is the normal
+      // case: the warning only appears when the provider has been refusing mail.
+      alerteEmail: null,
     });
   });
 
@@ -39,7 +42,21 @@ describe("api client", () => {
       doitChangerMdp: false,
       canal: "email",
       email: null,
+      alerteEmail: null,
     });
+  });
+
+  it("carries the mailbox warning when the provider has been refusing mail", async () => {
+    // The case a super-administrator hit for two days: every code was sent and every
+    // one bounced, while the screen said a code had been sent. The reason has to
+    // reach the member, or they wait for something that cannot arrive.
+    mockFetch(200, {
+      otp_required: true,
+      canal: "email",
+      alerte_email: "la boîte de réception est pleine",
+    });
+    const res = await login("a@b.c", "pw");
+    expect(res.alerteEmail).toBe("la boîte de réception est pleine");
   });
 
   it("raises a typed error on invalid credentials", async () => {

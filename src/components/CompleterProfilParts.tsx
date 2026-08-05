@@ -48,13 +48,21 @@ export const TYPES_MARIAGE = [
 ];
 export const DOC_TYPES = ["piece_identite", "passeport", "permis", "carte_consulaire"];
 
-/** An optional sacrament checkbox (baptism, communion, confirmation). Large tap
- * target, clear checked state, keyboard accessible. */
+/**
+ * An optional sacrament checkbox (baptism, communion, confirmation). Large tap
+ * target, clear checked state, keyboard accessible.
+ *
+ * The label keeps one weight whether it is ticked or not. Bolding on selection made
+ * a list of choices reflow as the member ticked through it, and put emphasis on
+ * whichever answers happened to be chosen rather than on what the question asks.
+ * The frame and the tint already say what is selected, and they say it without
+ * moving anything.
+ */
 export function SacrementCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }): JSX.Element {
   return (
     <label className="tap" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 8, border: `1px solid ${checked ? T.b600 : T.line}`, borderRadius: 11, background: checked ? T.tintb : T.surf }}>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ width: 18, height: 18, accentColor: T.b600 }} />
-      <span style={{ fontSize: 13.5, color: T.ink, fontWeight: checked ? 600 : 400 }}>{label}</span>
+      <span style={{ fontSize: 13.5, color: T.ink, fontWeight: 500 }}>{label}</span>
     </label>
   );
 }
@@ -83,6 +91,10 @@ export function initialFields(p: MembreProfile | null): ProfilFields {
     type_mariage: p?.type_mariage ?? "",
     en_cheminement: p?.en_cheminement ?? null,
     code_membre: p?.code_membre ?? "",
+    // Defaults to true, and this one is deliberate: the organisation issues a code
+    // to every member, so holding one is the ordinary case. The member's own earlier
+    // answer wins when there is one.
+    a_code_membre: p?.a_code_membre ?? true,
     date_entree: p?.date_entree ?? "",
     promotion: p?.promotion ?? "",
     profession: p?.profession ?? "",
@@ -92,9 +104,11 @@ export function initialFields(p: MembreProfile | null): ProfilFields {
     confirme: p?.confirme ?? false,
     type_membre: p?.type_membre ?? "",
     fonction_cle: p?.fonction_cle ?? "",
-    berger_declare: p?.berger_declare ?? false,
+    // Null, not false: an unanswered question must not arrive at the form already
+    // answered. The member's own previous answer is kept when there is one.
+    berger_declare: p?.berger_declare ?? null,
     berger_nom_declare: p?.berger_nom_declare ?? "",
-    equipe_dirigeante_declaree: p?.equipe_dirigeante_declaree ?? false,
+    equipe_dirigeante_declaree: p?.equipe_dirigeante_declaree ?? null,
     // Prefill the declared functions from the member's already-held ones (by key),
     // so a returning member sees their selections instead of an empty set.
     fonctions_souhaitees: (p?.fonctions ?? [])
@@ -108,17 +122,49 @@ export function initialFields(p: MembreProfile | null): ProfilFields {
   };
 }
 
-/** A labelled form row. When highlight is set, a "to fix" tag is shown. */
-export function Field({ label, required, info, highlight, children }: { label: string; required?: boolean; info?: string; highlight?: boolean; children: React.ReactNode }): JSX.Element {
+/**
+ * The border of a field that is required and still empty.
+ *
+ * The message under the button already said something was missing, but not where:
+ * on a long step the member scrolled back up and hunted for it. The field itself now
+ * carries the answer, so finding it costs a glance instead of a search.
+ *
+ * Red, and only for this. The orange used elsewhere means "the administration asked
+ * you to correct this", which is a different thing said at a different moment; using
+ * one colour for both would make neither legible.
+ */
+export const bordureManquante = { border: `1.5px solid ${T.dng}`, background: T.tintr } as const;
+
+/**
+ * A labelled form row.
+ *
+ * `highlight` marks a field the administration asked to correct. `manquant` marks a
+ * required field left empty when the member tried to move on. `champ` names the
+ * field so the step can scroll to the first one missing.
+ */
+export function Field({ label, required, info, highlight, manquant, champ, children }: {
+  label: string;
+  required?: boolean;
+  info?: string;
+  highlight?: boolean;
+  manquant?: boolean;
+  champ?: string;
+  children: React.ReactNode;
+}): JSX.Element {
   const t = useT();
   return (
-    <div>
+    <div data-champ={champ}>
       <span style={lbl}>
         {label.toUpperCase()} {required && <span style={{ color: T.dng }}>*</span>}
         {info && <InfoTip text={info} />}
         {highlight && (
           <span style={{ marginLeft: 6, fontSize: 8.5, fontWeight: 700, color: T.warn, background: T.warnbg, borderRadius: 6, padding: "2px 6px" }}>
             {t("correction.fieldTag").toUpperCase()}
+          </span>
+        )}
+        {manquant && !highlight && (
+          <span style={{ marginLeft: 6, fontSize: 8.5, fontWeight: 700, color: T.dng, background: T.tintr, borderRadius: 6, padding: "2px 6px" }}>
+            {t("completer.tagManquant").toUpperCase()}
           </span>
         )}
       </span>

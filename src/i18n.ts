@@ -1,5 +1,8 @@
 import { createContext, useContext } from "react";
 
+import type { MarquePublique } from "./api.js";
+import { useMarque } from "./useMarque.js";
+
 export type Lang = "fr" | "en";
 
 // Central FR/EN dictionary. Keys are stable; add entries as screens are localized.
@@ -569,6 +572,30 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "completer.secEngagement": { fr: "ENGAGEMENT & FONCTION", en: "COMMITMENT & FUNCTION" },
   "completer.secAdresse": { fr: "ADRESSE (facultatif)", en: "ADDRESS (optional)" },
   "completer.secVie": { fr: "VIE PERSONNELLE (facultatif)", en: "PERSONAL LIFE (optional)" },
+  // The community's own member code, asked first and on its own. It is a second
+  // identifier, issued by the community and distinct from the matricule this
+  // platform generates, so nobody here can reissue it if it is lost.
+  "completer.secCodeMembre": { fr: "VOTRE CODE MEMBRE", en: "YOUR MEMBER CODE" },
+  "completer.noteCodeMembre": {
+    fr: "Si l'organisation vous a déjà attribué un code membre, renseignez-le ici. Il est différent du matricule que cette plateforme vous délivre, et lui seul permet de vous relier à vos antécédents. Laissez vide si vous n'en avez pas encore.",
+    en: "If the organisation has already issued you a member code, enter it here. It is distinct from the member ID this platform issues you, and it alone links you to your existing record. Leave it empty if you do not have one yet.",
+  },
+  //: Shown on a required field the member left empty when trying to move on.
+  "completer.tagManquant": { fr: "à renseigner", en: "required" },
+  //: Asked before the code itself. Defaults to "oui" because the organisation
+  //: issues a code to everyone: holding one is the ordinary case, and it is the
+  //: exception that deserves an explicit act.
+  "completer.fACodeMembre": { fr: "Possédez-vous un code membre ?", en: "Do you have a member code?" },
+  "completer.iACodeMembre": {
+    fr: "Le code membre est délivré par l'organisation. Si vous ne l'avez pas encore reçu, répondez non : le champ vous sera rouvert le jour où il vous sera remis.",
+    en: "The member code is issued by the organisation. If you have not received it yet, answer no: the field will be reopened for you once it is.",
+  },
+  "completer.aCodeMembreOui": { fr: "Oui, j'ai un code membre", en: "Yes, I have a member code" },
+  "completer.aCodeMembreNon": { fr: "Non, je n'en ai pas encore", en: "No, not yet" },
+  "completer.noteSansCodeMembre": {
+    fr: "Vous avez déclaré ne pas encore avoir de code membre. Le champ est donc fermé et votre inscription se poursuit normalement. Dès que l'organisation vous remettra votre code, faites une demande de mise à jour depuis votre espace : le champ sera rouvert pour que vous puissiez le renseigner. L'administration pourra également vous le demander de son côté.",
+    en: "You have stated that you do not have a member code yet, so the field is closed and your registration continues normally. As soon as the organisation issues your code, open an update request from your space: the field will be reopened for you. The administration may also ask you for it.",
+  },
   "completer.fCodeMembre": { fr: "Code membre (si vous en avez un)", en: "Member code (if you have one)" },
   "completer.iCodeMembre": { fr: "Code externe de l'organisation, différent du matricule ADSUM. En majuscules, unique. Laissez vide si vous n'en avez pas.", en: "External organisation code, distinct from the ADSUM member ID. Uppercase, unique. Leave empty if you have none." },
   "completer.phCodeMembre": { fr: "Ex. SR-AB-1234", en: "E.g. SR-AB-1234" },
@@ -584,11 +611,15 @@ const DICT: Record<string, { fr: string; en: string }> = {
   },
   "completer.fBergerDeclare": { fr: "Êtes-vous berger / bergère ?", en: "Are you a shepherd?" },
   "completer.iBergerDeclare": {
-    fr: "Indiquez si vous êtes déjà berger ou bergère au Sacerdoce Royal. Cette déclaration sera confirmée par l'administration.",
+    fr: "Indiquez si vous êtes déjà berger ou bergère au sein de {organisation}. Cette déclaration sera confirmée par l'administration.",
     en: "State whether you already are a shepherd in the community. This declaration will be confirmed by the administration.",
   },
   "completer.bergerOui": { fr: "Oui, je suis berger / bergère", en: "Yes, I am a shepherd" },
   "completer.bergerNon": { fr: "Non", en: "No" },
+  "completer.errBergerNom": {
+    fr: "Vous avez déclaré être berger ou bergère : indiquez votre nom de consécration.",
+    en: "You have declared yourself a shepherd: enter your consecration name.",
+  },
   "completer.fBergerNom": { fr: "Nom de consécration (sans « Berger »/« Bergère »)", en: "Consecration name (without the title)" },
   "completer.iBergerNom": {
     fr: "Saisissez uniquement votre nom de consécration, par exemple « David de Jésus ». Le titre « Berger » ou « Bergère » est ajouté automatiquement selon votre sexe, pour éviter de l'écrire deux fois.",
@@ -695,7 +726,10 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "completer.anneeVisible": { fr: "Afficher mon année de naissance sur mon profil (sinon seul le jour et le mois, pour l'anniversaire, sont visibles)", en: "Show my birth year on my profile (otherwise only the day and month, for the birthday, are visible)" },
   "completer.signatureIntro": { fr: "Lisez les documents puis signez électroniquement avec le code reçu. Cette signature valide votre engagement.", en: "Read the documents then sign electronically with the code you received. This signature validates your commitment." },
   "completer.recapIntro": { fr: "Vérifiez le récapitulatif. Vous pouvez revenir en arrière pour corriger avant d'envoyer.", en: "Review the summary. You can go back to correct before sending." },
-  "completer.recapMatricule": { fr: "Matricule ADSUM (attribué automatiquement)", en: "ADSUM member ID (assigned automatically)" },
+  // {marque} is filled from the organisation's identity at render time. Written as a
+  // literal it named one product line, so every other organisation showed its members
+  // a member number labelled with somebody else's brand.
+  "completer.recapMatricule": { fr: "Matricule {marque} (attribué automatiquement)", en: "{marque} member ID (assigned automatically)" },
   "completer.refsError": { fr: "Certaines listes (commissions, tribus, rattachements...) n'ont pas pu être chargées. Vérifiez votre connexion puis réessayez.", en: "Some lists (commissions, tribes, attachments...) could not be loaded. Check your connection and try again." },
   "completer.refsRetry": { fr: "Recharger les listes", en: "Reload the lists" },
 
@@ -791,7 +825,7 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "login.methodEmail": { fr: "E-mail", en: "E-mail" },
   "login.methodMatricule": { fr: "Matricule", en: "Matricule" },
   "login.methodCode": { fr: "Code membre", en: "Member code" },
-  "login.identMatricule": { fr: "Matricule ADSUM", en: "ADSUM matricule" },
+  "login.identMatricule": { fr: "Matricule {marque}", en: "{marque} matricule" },
   "login.identCode": { fr: "Code membre", en: "Member code" },
   "login.phMatricule": { fr: "ADS-XX-000000-X", en: "ADS-XX-000000-X" },
   "login.phCode": { fr: "Votre code membre", en: "Your member code" },
@@ -926,7 +960,7 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "infos.rowNomPastoral": { fr: "Nom pastoral", en: "Pastoral name" },
   "infos.rowFonction": { fr: "Fonction", en: "Function" },
   "infos.rowAnniversaire": { fr: "Anniversaire", en: "Birthday" },
-  "infos.rowMatricule": { fr: "Matricule ADSUM", en: "ADSUM ID" },
+  "infos.rowMatricule": { fr: "Matricule {marque}", en: "{marque} ID" },
   "infos.rowCodeMembre": { fr: "Code membre", en: "Member code" },
   "infos.rowCourriel": { fr: "Courriel", en: "Email" },
   "infos.rowLocalisation": { fr: "Localisation", en: "Location" },
@@ -1156,7 +1190,23 @@ export function useLang(): Lang {
   return useContext(LangContext);
 }
 
+/** Fill the identity placeholders a label may carry.
+ *
+ *  Done here rather than at each call site: the brand and the organisation appear in
+ *  labels all over the application, and a substitution every screen has to remember
+ *  is one every new screen will forget, leaving one organisation's name on another
+ *  organisation's interface.
+ */
+export function appliquerIdentite(texte: string, marque: MarquePublique): string {
+  if (!texte.includes("{")) return texte;
+  return texte
+    .replace(/\{marque\}/g, marque.marque)
+    .replace(/\{organisation\}/g, marque.organisation)
+    .replace(/\{organisationCourte\}/g, marque.organisation_courte);
+}
+
 export function useT(): (key: string) => string {
   const lang = useLang();
-  return (key: string) => tr(lang, key);
+  const marque = useMarque();
+  return (key: string) => appliquerIdentite(tr(lang, key), marque);
 }

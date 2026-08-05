@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import { ApiError, login, loginVerify, requestLoginCode } from "../api.js";
 import { useT } from "../i18n.js";
+import { useMarque } from "../useMarque.js";
+import { T } from "../proto.js";
 import { PasswordInput } from "./PasswordInput.js";
 
 export interface AuthContext {
@@ -14,12 +16,16 @@ export interface AuthContext {
 interface LoginProps {
   onAuth: (ctx: AuthContext) => void;
   onForgot?: () => void;
+  /** Why the previous session ended, so coming back here is explained rather than
+   *  abrupt. Absent on a first sign-in. */
+  avis?: string;
 }
 
 type Methode = "email" | "matricule" | "code";
 
-export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
+export function Login({ onAuth, onForgot, avis }: LoginProps): JSX.Element {
   const t = useT();
+  const marque = useMarque();
   // The identifier field carries the e-mail (default), the ADSUM matricule, or the
   // member code, depending on the chosen method. The server resolves all three.
   const [methode, setMethode] = useState<Methode>("email");
@@ -30,6 +36,9 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
   // Second factor step: shown only when the server asks for a code.
   const [step, setStep] = useState<"password" | "otp">("password");
   const [canal, setCanal] = useState<string | null>(null);
+  // Why the mailbox refused our last messages, when it did. Composed by the server,
+  // which is the only side that knows what the provider reported.
+  const [alerteEmail, setAlerteEmail] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [confiance, setConfiance] = useState(true);
   const [renvoye, setRenvoye] = useState(false);
@@ -42,6 +51,7 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
       const res = await login(identifiant.trim(), password);
       if (res.otpRequired) {
         setCanal(res.canal);
+        setAlerteEmail(res.alerteEmail);
         setStep("otp");
       } else if (res.token) {
         // For the first-login flow, always hand over the canonical e-mail so the
@@ -92,10 +102,22 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
   return (
     <div className="login">
       <div className="login-logo" aria-hidden="true">
-        A
+        {marque.initiale}
       </div>
-      <div className="login-brand">ADSUM</div>
+      <div className="login-brand">{marque.marque}</div>
       <p className="login-sub">{t("login.tagline")}</p>
+
+      {avis && (
+        <p
+          style={{
+            fontSize: 11.5, lineHeight: 1.5, color: T.mut, background: T.surf,
+            border: `1px solid ${T.line}`, borderRadius: 11, padding: "10px 12px",
+            margin: "2px 0 6px", textAlign: "center",
+          }}
+        >
+          {avis}
+        </p>
+      )}
 
       {step === "password" ? (
         <form onSubmit={submitPassword} className="login-form">
@@ -165,6 +187,10 @@ export function Login({ onAuth, onForgot }: LoginProps): JSX.Element {
           <p className="login-sub" style={{ marginTop: 0 }}>
             {t("login.otpIntro").replace("{canal}", canalLabel)}
           </p>
+          {/* Placed right under the announcement it qualifies: on its own the line
+              above says a code is on its way, which is not true when the mailbox has
+              been bouncing every message. */}
+          {alerteEmail && <p className="banner banner-warn small">{alerteEmail}</p>}
           <label>
             <span>{t("login.otpLabel")}</span>
             <input
