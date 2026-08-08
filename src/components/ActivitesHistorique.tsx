@@ -63,10 +63,15 @@ const FILTRES_STATUT: { id: string; fr: string; en: string }[] = [
 ];
 
 /**
- * HISTORIQUE DES ACTIVITES: terminated activities with the member's OFFICIAL
- * participation status, taken from the survey (never from a scan). Server
- * paginated, filterable by status, grouped by month so it stays readable over
- * years. A short sub-text reminds that the status comes from the survey.
+ * HISTORIQUE DES ACTIVITES: terminated activities with the member's official
+ * participation status. Server paginated, filterable by status, grouped by month so
+ * it stays readable over years.
+ *
+ * The source of each status is shown, which it was not. A presence confirmed at a
+ * checkpoint and one the member typed into a form produced the same green badge, and
+ * the heading told the member their status came from the survey when it came from a
+ * scan. The two are different facts and the platform treats them differently, so the
+ * screen has to say which one it is holding.
  */
 export function HistoriqueActivites({ token }: Readonly<{ token: string }>): JSX.Element {
   const en = useLang() === "en";
@@ -78,7 +83,9 @@ export function HistoriqueActivites({ token }: Readonly<{ token: string }>): JSX
   return (
     <div>
       <p style={{ fontSize: 11.5, color: T.mut, margin: "0 2px 8px" }}>
-        {en ? "Your participation status comes from the official survey." : "Votre statut de participation provient du sondage officiel."}
+        {en
+          ? "Your status comes from the official survey, except where a checkpoint confirmed your presence, which prevails."
+          : "Votre statut provient du sondage officiel, sauf présence confirmée à un point de contrôle, qui prime."}
       </p>
       <div style={{ display: "flex", gap: 7, overflowX: "auto", padding: "0 2px 10px", WebkitOverflowScrolling: "touch" }}>
         {FILTRES_STATUT.map((f) => (
@@ -102,12 +109,22 @@ export function HistoriqueActivites({ token }: Readonly<{ token: string }>): JSX
               <ul className="list" style={{ margin: 0 }}>
                 {items.map((a) => {
                   const m = STATUT_META[a.statut_personnel];
+                  // A scan is proof; a declaration is the member's word. Shown apart
+                  // rather than merged into one badge.
+                  const prouve = a.source === "scan";
                   const modeLabel = a.mode === "en_ligne" ? (en ? "Online" : "En ligne") : a.mode === "hybride" ? (en ? "Hybrid" : "Hybride") : a.mode === "presentiel" ? (en ? "In person" : "Présentiel") : null;
                   return (
                     <li key={a.id} className="list-item" style={{ flexDirection: "column", alignItems: "stretch", gap: 5, borderLeft: `3px solid ${a.couleur || m.fg}` }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
                         <strong style={{ fontSize: 14.5 }}>{a.titre}</strong>
-                        <span style={{ flexShrink: 0, background: m.bg, color: m.fg, fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 7, fontFamily: T.fm }}>{en ? m.en : m.fr}</span>
+                        <span style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+                          <span style={{ background: m.bg, color: m.fg, fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 7, fontFamily: T.fm }}>{en ? m.en : m.fr}</span>
+                          {prouve && (
+                            <span style={{ fontSize: 9, fontWeight: 700, color: T.ok, letterSpacing: 0.3 }}>
+                              {en ? "CONFIRMED AT CHECKPOINT" : "CONFIRMÉ AU CONTRÔLE"}
+                            </span>
+                          )}
+                        </span>
                       </div>
                       <span className="list-sub">{formatDateTime(a.debut)}</span>
                       <span className="list-sub" style={{ color: T.faint }}>{[a.type, modeLabel, a.lieu].filter(Boolean).join(" · ")}</span>

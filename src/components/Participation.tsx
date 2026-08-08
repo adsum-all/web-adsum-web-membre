@@ -1,25 +1,47 @@
 import { type ReactNode, useEffect, useState } from "react";
 
-import { ApiError, type ParticipationMembre, declarerParticipation, getParticipation } from "../api.js";
+import {
+  ApiError,
+  type MotifAbsence,
+  type ParticipationMembre,
+  declarerParticipation,
+  getMotifsAbsence,
+  getParticipation,
+} from "../api.js";
 import { useT } from "../i18n.js";
 import { T } from "../proto.js";
 
-const OPTIONS: { value: "present" | "partiel" | "absent"; labelKey: string; hintKey: string }[] = [
-  { value: "present", labelKey: "part.present", hintKey: "part.presentHint" },
-  { value: "partiel", labelKey: "part.partiel", hintKey: "part.partielHint" },
-  { value: "absent", labelKey: "part.absent", hintKey: "part.absentHint" },
-];
-
 /**
- * Participation for one activity. It can be confirmed only once: after
- * validation the whole form locks (read-only), so a member can never come back
- * to change their status, rating or opinion. A scanned member is already present
- * and only confirms their feedback.
+ * Declaring participation in one activity.
+ *
+ * The form asks three questions in sequence, and each one only makes sense given the
+ * previous answer. That order is the whole point of this screen.
+ *
+ * It used to ask one question with three options on the same footing: Présent, Suivi
+ * partiel, Absent. Having followed and how much of it were collapsed into a single
+ * choice, so somebody could answer "partial" and then say they were on site, which
+ * means nothing: in the room you were there or you were not. That combination
+ * produced a hundred and nine rows in production that nobody can interpret.
+ *
+ * So: did you follow this activity. Then, if you did and no scan already proves it,
+ * how. Then, if online, in full or in part, because that is the only place where
+ * following partially is a real thing that happens.
+ *
+ * A member the controller scanned is not asked any of it. Their presence is proven,
+ * and offering them a form on which they could declare an absence would let a
+ * declaration contradict a fact.
+ *
+ * Confirmed once: after validation the whole form locks, so a status, a rating or an
+ * opinion can never be revisited.
  */
 export function Participation({ token, eventId, flat = false }: { token: string; eventId: string; flat?: boolean }): JSX.Element | null {
   const [data, setData] = useState<ParticipationMembre | null>(null);
-  const [choix, setChoix] = useState<"present" | "partiel" | "absent" | null>(null);
-  const [modalite, setModalite] = useState<"presentiel" | "en_ligne" | null>(null);
+  const [aSuivi, setASuivi] = useState<boolean | null>(null);
+  const [mode, setMode] = useState<"presentiel" | "en_ligne" | null>(null);
+  const [niveau, setNiveau] = useState<"complet" | "partiel" | null>(null);
+  const [motif, setMotif] = useState("");
+  const [motifCommentaire, setMotifCommentaire] = useState("");
+  const [motifs, setMotifs] = useState<MotifAbsence[]>([]);
   const [avis, setAvis] = useState("");
   const [note, setNote] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,12 +52,18 @@ export function Participation({ token, eventId, flat = false }: { token: string;
     void getParticipation(token, eventId)
       .then((d) => {
         setData(d);
-        setChoix(d.statut);
-        setModalite(d.modalite ?? null);
-        // The evaluation is anonymous: a member's own rating/comment is never read
-        // back to them (no member link exists), so the inputs always start empty.
+        // Restore a draft into the shape of the three questions.
+        if (d.statut === "absent") setASuivi(false);
+        else if (d.statut) setASuivi(true);
+        if (d.modalite) setMode(d.modalite);
+        if (d.statut === "partiel") setNiveau("partiel");
+        else if (d.statut === "present" && d.modalite === "en_ligne") setNiveau("complet");
+        // The evaluation is anonymous: a member's own rating and comment are never
+        // read back to them, so those inputs always start empty.
       })
       .catch(() => undefined);
+    // The catalogue is administrable, so it is fetched rather than hard-coded here.
+    void getMotifsAbsence(token).then(setMotifs).catch(() => undefined);
   }, [token, eventId]);
 
   if (!data) return null;
@@ -43,14 +71,10 @@ export function Participation({ token, eventId, flat = false }: { token: string;
   const locked = data.verrouille;
   const scanned = data.deja_scanne;
 
-  // Before the activity starts (and if nothing recorded yet), the form is fully
-  // hidden: no premature participation, no dead card on upcoming events.
-  if (!data.ouvert && !scanned && !locked) {
-    return null;
-  }
+  // Before the activity starts, and with nothing recorded, the form is hidden: no
+  // premature declaration, no dead card on an upcoming activity.
+  if (!data.ouvert && !scanned && !locked) return null;
 
-  // Declaration window over and nothing recorded: the screen says so instead of
-  // showing a form the server would reject (no misleading state, ever).
   if (data.cloture && !locked && !scanned && data.statut == null) {
     return (
       <Card flat={flat}>
@@ -63,65 +87,73 @@ export function Participation({ token, eventId, flat = false }: { token: string;
     );
   }
 
-  // Finalized: read-only summary, no inputs, no buttons.
   if (locked) {
-    const statutLabel = data.statut ? t(`part.${data.statut}`) : "-";
     return (
       <Card flat={flat}>
         <Title text={t("part.recorded")} />
         <div style={{ display: "flex", alignItems: "center", gap: 8, background: T.okbg, borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
-          <span style={{ color: T.ok, fontWeight: 700 }}>✓</span>
+          <span style={{ color: T.ok, fontWeight: 700 }}>OK</span>
           <span style={{ fontSize: 12.5, color: T.ink }}>
-            {t("part.yourStatus")} : <b>{statutLabel}</b>
+            {t("part.yourStatus")} : <b>{resumeVerrouille(data, t)}</b>
           </span>
         </div>
-        {data.deja_evalue && (
-          <p style={{ fontSize: 11, color: T.ok, margin: "0 0 6px" }}>{t("part.anonSaved")}</p>
-        )}
+        {data.deja_evalue && <p style={{ fontSize: 11, color: T.ok, margin: "0 0 6px" }}>{t("part.anonSaved")}</p>}
         <p style={{ fontSize: 11, color: T.faint, margin: 0 }}>{t("part.immutable")}</p>
       </Card>
     );
   }
 
+  const motifChoisi = motifs.find((m) => m.code === motif);
+  const commentaireManquant = Boolean(motifChoisi?.commentaire_requis) && !motifCommentaire.trim();
+
+  // What must be answered before the form can be sent, question by question.
+  const peutValider =
+    scanned ||
+    (aSuivi === false && !commentaireManquant) ||
+    (aSuivi === true && mode === "presentiel") ||
+    (aSuivi === true && mode === "en_ligne" && niveau !== null);
+
+  const showFeedback = (scanned || aSuivi === true) && !data.deja_evalue;
+
   async function valider(): Promise<void> {
     setBusy(true);
     setMsg(null);
     try {
-      const body: { statut?: string; modalite?: "presentiel" | "en_ligne"; avis?: string; note?: number; valider: boolean } = { valider: true };
-      if (choix) body.statut = choix;
-      // Modality is declarative only when there is no scan proof; the server
-      // ignores it for scanned members (their modality is proven on-site).
-      if (!scanned && modalite && choix !== "absent") body.modalite = modalite;
+      const body: Parameters<typeof declarerParticipation>[2] = { valider: true };
+      if (!scanned) {
+        body.a_suivi = aSuivi ?? undefined;
+        if (aSuivi === true && mode) body.mode_suivi = mode;
+        // Only sent for an online follow: on site the question is not asked, and
+        // sending it anyway is what the server now refuses.
+        if (aSuivi === true && mode === "en_ligne" && niveau) body.niveau_en_ligne = niveau;
+        if (aSuivi === false && motif) {
+          body.absence_motif = motif;
+          if (motifCommentaire.trim()) body.absence_commentaire = motifCommentaire.trim();
+        }
+      }
       if (avis.trim()) body.avis = avis.trim();
       if (note) body.note = note;
       await declarerParticipation(token, eventId, body);
-      const fresh = await getParticipation(token, eventId);
-      setData(fresh);
+      setData(await getParticipation(token, eventId));
     } catch (e) {
-      // Never fail silently: the member must know why nothing happened
-      // (window closed, already recorded, network...). Prefer the server's precise
-      // reason (ApiError.detail) over the generic fallback label.
-      const reason =
+      // Never fail silently: the member must know why nothing happened. The server's
+      // own reason is preferred, since it is the precise one.
+      const raison =
         e instanceof ApiError && typeof e.detail === "string" && e.detail.trim()
           ? e.detail
           : e instanceof Error && e.message
             ? e.message
             : t("part.error");
-      setMsg(reason);
+      setMsg(raison);
       try {
-        const fresh = await getParticipation(token, eventId);
-        setData(fresh);
+        setData(await getParticipation(token, eventId));
       } catch {
-        // keep the current view if the refresh itself fails
+        /* keep the current view if the refresh itself fails */
       }
     } finally {
       setBusy(false);
     }
   }
-
-  const showFeedback = (scanned || choix === "present" || choix === "partiel") && !data.deja_evalue;
-  const needModalite = !scanned && (choix === "present" || choix === "partiel");
-  const canConfirm = scanned || choix === "absent" || (choix != null && modalite != null);
 
   return (
     <Card flat={flat}>
@@ -130,72 +162,104 @@ export function Participation({ token, eventId, flat = false }: { token: string;
       {scanned ? (
         <div style={{ background: T.okbg, borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ color: T.ok, fontWeight: 700 }}>✓</span>
+            <span style={{ color: T.ok, fontWeight: 700 }}>OK</span>
             <span style={{ fontSize: 12.5, color: T.ink }}>{t("part.scanned")}</span>
           </div>
           <div style={{ fontSize: 11, color: T.mut, marginTop: 4 }}>{t("part.modKnown")}</div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
-          {OPTIONS.map((o) => (
-            <div
-              key={o.value}
-              onClick={() => setChoix(o.value)}
-              className="tap"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "11px 13px",
-                borderRadius: 11,
-                border: `1.5px solid ${choix === o.value ? T.b600 : T.line}`,
-                background: choix === o.value ? T.b600 : T.surf,
-                color: choix === o.value ? "#fff" : T.ink,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{t(o.labelKey)}</div>
-                <div style={{ fontSize: 10.5, color: choix === o.value ? "rgba(255,255,255,.85)" : T.mut }}>{t(o.hintKey)}</div>
-              </div>
-              <span style={{ fontSize: 15 }}>{choix === o.value ? "●" : "○"}</span>
-            </div>
-          ))}
-        </div>
-      )}
+        <>
+          <Question texte={t("part.qSuivi")} />
+          <Choix
+            options={[
+              { valeur: "oui", label: t("part.oui"), aide: t("part.ouiHint") },
+              { valeur: "non", label: t("part.non"), aide: t("part.nonHint") },
+            ]}
+            choisi={aSuivi === null ? null : aSuivi ? "oui" : "non"}
+            onChoisir={(v) => {
+              setASuivi(v === "oui");
+              setMode(null);
+              setNiveau(null);
+              setMotif("");
+              setMotifCommentaire("");
+            }}
+          />
 
-      {needModalite && (
-        <div style={{ margin: "2px 0 10px" }}>
-          <div style={{ fontSize: 11, color: T.mut, marginBottom: 6 }}>{t("part.modQuestion")}</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {([
-              { value: "presentiel" as const, label: t("part.modPresentiel") },
-              { value: "en_ligne" as const, label: t("part.modEnLigne") },
-            ]).map((m) => (
-              <div
-                key={m.value}
-                onClick={() => setModalite(m.value)}
-                className="tap"
-                style={{
-                  flex: 1,
-                  textAlign: "center",
-                  padding: "10px 8px",
-                  borderRadius: 11,
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  border: `1.5px solid ${modalite === m.value ? T.b600 : T.line}`,
-                  background: modalite === m.value ? T.b600 : T.surf,
-                  color: modalite === m.value ? "#fff" : T.ink,
+          {aSuivi === true && (
+            <>
+              <Question texte={t("part.qMode")} />
+              <Choix
+                enLigne
+                options={[
+                  { valeur: "presentiel", label: t("part.modPresentiel") },
+                  { valeur: "en_ligne", label: t("part.modEnLigne") },
+                ]}
+                choisi={mode}
+                onChoisir={(v) => {
+                  setMode(v as "presentiel" | "en_ligne");
+                  setNiveau(null);
                 }}
+              />
+              {mode === "presentiel" && (
+                <p style={{ fontSize: 10.5, color: T.faint, margin: "6px 0 0", lineHeight: 1.5 }}>
+                  {t("part.declareeNote")}
+                </p>
+              )}
+            </>
+          )}
+
+          {/* Only online. On site there is no degree of presence to report. */}
+          {aSuivi === true && mode === "en_ligne" && (
+            <>
+              <Question texte={t("part.qNiveau")} />
+              <Choix
+                options={[
+                  { valeur: "complet", label: t("part.enEntier") },
+                  { valeur: "partiel", label: t("part.unePartie") },
+                ]}
+                choisi={niveau}
+                onChoisir={(v) => setNiveau(v as "complet" | "partiel")}
+              />
+              <p style={{ fontSize: 10.5, color: T.faint, margin: "6px 0 0", lineHeight: 1.5 }}>
+                {t("part.niveauHint")}
+              </p>
+            </>
+          )}
+
+          {aSuivi === false && (
+            <>
+              <Question texte={t("part.qMotif")} />
+              <select
+                value={motif}
+                onChange={(e) => setMotif(e.target.value)}
+                style={{ width: "100%", border: `1px solid ${T.line}`, borderRadius: 9, padding: "10px 9px", fontSize: 13, background: T.surf, color: T.ink, boxSizing: "border-box" }}
               >
-                {m.label}
-              </div>
-            ))}
-          </div>
-        </div>
+                <option value="">{t("part.motifAucun")}</option>
+                {motifs.map((m) => (
+                  <option key={m.code} value={m.code}>{m.libelle}</option>
+                ))}
+              </select>
+              {motifChoisi?.commentaire_requis && (
+                <textarea
+                  value={motifCommentaire}
+                  onChange={(e) => setMotifCommentaire(e.target.value)}
+                  rows={2}
+                  placeholder={t("part.motifPrecision")}
+                  style={{ width: "100%", marginTop: 6, border: `1px solid ${commentaireManquant ? T.dng : T.line}`, borderRadius: 9, padding: 8, fontSize: 13, resize: "vertical", boxSizing: "border-box" }}
+                />
+              )}
+              {/* Said before sending, not discovered afterwards: giving a reason is a
+                  request, and somebody else decides what it is worth. */}
+              <p style={{ fontSize: 10.5, color: T.faint, margin: "6px 0 0", lineHeight: 1.5 }}>
+                {t("part.absenceNote")}
+              </p>
+            </>
+          )}
+        </>
       )}
 
       {showFeedback && (
-        <div style={{ marginTop: 4 }}>
+        <div style={{ marginTop: 12 }}>
           <p style={{ fontSize: 10.5, color: T.ok, background: T.okbg, border: `1px solid ${T.ok}`, borderRadius: 9, padding: "7px 9px", margin: "0 0 8px", lineHeight: 1.5 }}>
             {t("part.anonNoticeA")}
             <strong>{t("part.anonNoticeBold")}</strong>
@@ -234,14 +298,74 @@ export function Participation({ token, eventId, flat = false }: { token: string;
 
       <button
         type="button"
-        disabled={busy || !canConfirm}
+        disabled={busy || !peutValider}
         onClick={() => void valider()}
         className="tap"
-        style={{ width: "100%", height: 44, borderRadius: 11, border: "none", background: `linear-gradient(180deg,${T.b500},${T.b600})`, color: "#fff", fontWeight: 600, fontSize: 13.5, opacity: busy || !canConfirm ? 0.6 : 1 }}
+        style={{ width: "100%", height: 44, borderRadius: 11, border: "none", background: `linear-gradient(180deg,${T.b500},${T.b600})`, color: "#fff", fontWeight: 600, fontSize: 13.5, opacity: busy || !peutValider ? 0.6 : 1 }}
       >
         {busy ? t("part.sending") : scanned ? t("part.validateOpinion") : t("part.validate")}
       </button>
     </Card>
+  );
+}
+
+/** What the member sees once the answer is final, in the vocabulary they answered in. */
+function resumeVerrouille(d: ParticipationMembre, t: (k: string) => string): string {
+  if (d.source === "scan") return t("part.resumeScan");
+  if (d.statut === "absent") return t("part.resumeAbsent");
+  if (d.statut === "partiel") return t("part.resumePartiel");
+  if (d.modalite === "en_ligne") return t("part.resumeEnLigne");
+  return t("part.resumePresentiel");
+}
+
+function Question({ texte }: { texte: string }): JSX.Element {
+  return <p style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, margin: "12px 0 7px" }}>{texte}</p>;
+}
+
+function Choix({
+  options,
+  choisi,
+  onChoisir,
+  enLigne = false,
+}: {
+  options: { valeur: string; label: string; aide?: string }[];
+  choisi: string | null;
+  onChoisir: (v: string) => void;
+  enLigne?: boolean;
+}): JSX.Element {
+  return (
+    <div style={{ display: "flex", flexDirection: enLigne ? "row" : "column", gap: 8 }}>
+      {options.map((o) => (
+        <div
+          key={o.valeur}
+          onClick={() => onChoisir(o.valeur)}
+          className="tap"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onChoisir(o.valeur); }}
+          style={{
+            flex: enLigne ? 1 : undefined,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "11px 13px",
+            borderRadius: 11,
+            border: `1.5px solid ${choisi === o.valeur ? T.b600 : T.line}`,
+            background: choisi === o.valeur ? T.b600 : T.surf,
+            color: choisi === o.valeur ? "#fff" : T.ink,
+            cursor: "pointer",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 13.5, fontWeight: 600 }}>{o.label}</div>
+            {o.aide && (
+              <div style={{ fontSize: 10.5, color: choisi === o.valeur ? "rgba(255,255,255,.85)" : T.mut }}>{o.aide}</div>
+            )}
+          </div>
+          {!enLigne && <span style={{ fontSize: 15 }}>{choisi === o.valeur ? "●" : "○"}</span>}
+        </div>
+      ))}
+    </div>
   );
 }
 

@@ -1153,11 +1153,52 @@ export function getParticipation(token: string, eventId: string): Promise<Partic
   return authedGet<ParticipationMembre>(`/api/v1/membres/me/evenements/${eventId}/participation`, token, apiMsg("Participation indisponible", "Participation unavailable"));
 }
 
+/** One reason a member may give for not having followed an activity. */
+export interface MotifAbsence {
+  code: string;
+  libelle: string;
+  libelle_en: string | null;
+  /** Some reasons mean nothing without a word of explanation. */
+  commentaire_requis: boolean;
+}
+
+export function getMotifsAbsence(token: string): Promise<MotifAbsence[]> {
+  return authedGet<MotifAbsence[]>(
+    "/api/v1/reference/motifs-absence",
+    token,
+    apiMsg("Motifs indisponibles", "Reasons unavailable"),
+  );
+}
+
+/**
+ * Answer the participation form.
+ *
+ * The three questions, in the order they are asked. `statut` and `modalite` are the
+ * previous shape and remain accepted by the server, but they conflate having followed
+ * with how much of it, which is exactly what this replaces.
+ */
 export function declarerParticipation(
   token: string,
   eventId: string,
-  body: { statut?: string; modalite?: "presentiel" | "en_ligne"; avis?: string; note?: number; valider?: boolean },
-): Promise<{ ok: boolean; verrouille: boolean; statut: string; message?: string }> {
+  body: {
+    a_suivi?: boolean;
+    mode_suivi?: "presentiel" | "en_ligne";
+    niveau_en_ligne?: "complet" | "partiel";
+    absence_motif?: string;
+    absence_commentaire?: string;
+    avis?: string;
+    note?: number;
+    valider?: boolean;
+  },
+): Promise<{
+  ok: boolean;
+  verrouille: boolean;
+  statut: string;
+  mode_suivi?: string;
+  niveau_en_ligne?: string | null;
+  confiance?: string;
+  message?: string;
+}> {
   return authedPut(`/api/v1/membres/me/evenements/${eventId}/participation`, token, body, apiMsg("Envoi impossible", "Sending failed"));
 }
 
