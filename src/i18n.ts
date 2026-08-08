@@ -196,7 +196,9 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "act.passees": { fr: "Activités passées", en: "Past activities" },
   "act.voirPlus": { fr: "Voir plus", en: "Show more" },
   "act.voirMoins": { fr: "Voir moins", en: "Show less" },
-  "act.confirmerPresence": { fr: "Confirmer ma présence", en: "Confirm my attendance" },
+  // Neutral on purpose: this one button opens a form on which the member may also say
+  // they did not follow the activity at all.
+  "act.confirmerPresence": { fr: "Déclarer ma participation", en: "Declare my attendance" },
   "act.masquer": { fr: "Masquer", en: "Hide" },
   "act.phaseEnCours": { fr: "En direct", en: "Live" },
   "act.phaseBientot": { fr: "Bientôt", en: "Soon" },
@@ -226,6 +228,38 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "part.confirmOnce": { fr: "Une seule validation possible. Vérifiez avant de valider.", en: "You can confirm only once. Please review before confirming." },
   "part.openUntil": { fr: "Formulaire ouvert jusqu'au {d}.", en: "Form open until {d}." },
   "part.modQuestion": { fr: "Comment avez-vous suivi l'activité ?", en: "How did you follow the activity?" },
+  // The three questions, in the order they are asked. The wording matters as much as
+  // the branching: "étiez-vous présent" conflates being in the room with having
+  // followed, which is precisely the confusion this form exists to remove.
+  "part.qSuivi": { fr: "Avez-vous suivi cette activité ?", en: "Did you follow this activity?" },
+  "part.oui": { fr: "Oui, j'ai suivi cette activité", en: "Yes, I followed this activity" },
+  "part.ouiHint": { fr: "En présentiel ou en ligne", en: "On site or online" },
+  "part.non": { fr: "Non, je n'ai pas suivi cette activité", en: "No, I did not follow this activity" },
+  "part.nonHint": { fr: "Vous pourrez indiquer une raison", en: "You may give a reason" },
+  "part.qMode": { fr: "Comment avez-vous suivi l'activité ?", en: "How did you follow it?" },
+  "part.qNiveau": { fr: "Votre suivi en ligne était-il complet ou partiel ?", en: "Was your online attendance full or partial?" },
+  "part.enEntier": { fr: "J'ai suivi l'activité en entier", en: "I followed the whole activity" },
+  "part.unePartie": { fr: "J'ai suivi une partie de l'activité", en: "I followed part of the activity" },
+  "part.niveauHint": {
+    fr: "Choisissez « en entier » si vous avez suivi l'essentiel jusqu'au terme. Choisissez « une partie » si vous avez suivi de façon intermittente.",
+    en: "Choose “the whole activity” if you followed it through to the end. Choose “part of it” if you followed intermittently.",
+  },
+  "part.declareeNote": {
+    fr: "Votre déclaration sera enregistrée comme une présence déclarée, distincte d'un pointage confirmé au contrôle.",
+    en: "This is recorded as a declared attendance, distinct from a check-in confirmed by the control team.",
+  },
+  "part.qMotif": { fr: "Souhaitez-vous indiquer la raison de votre absence ?", en: "Would you like to give a reason?" },
+  "part.motifAucun": { fr: "Je ne souhaite pas préciser", en: "I prefer not to say" },
+  "part.motifPrecision": { fr: "Précisez (obligatoire pour ce motif)", en: "Please explain (required for this reason)" },
+  "part.absenceNote": {
+    fr: "Votre déclaration sera transmise au responsable habilité. Elle ne devient pas automatiquement une absence excusée.",
+    en: "Your declaration goes to the authorised leader. It does not automatically become an excused absence.",
+  },
+  "part.resumeScan": { fr: "Présent, confirmé au point de contrôle", en: "Present, confirmed at the checkpoint" },
+  "part.resumePresentiel": { fr: "Suivi en présentiel (déclaré)", en: "Followed on site (declared)" },
+  "part.resumeEnLigne": { fr: "Suivi en ligne, en entier", en: "Followed online, in full" },
+  "part.resumePartiel": { fr: "Suivi en ligne, partiellement", en: "Followed online, partially" },
+  "part.resumeAbsent": { fr: "N'a pas suivi l'activité", en: "Did not follow the activity" },
   "part.modPresentiel": { fr: "Sur place (présentiel)", en: "On site (in person)" },
   "part.modEnLigne": { fr: "En ligne", en: "Online" },
   "part.modKnown": {
