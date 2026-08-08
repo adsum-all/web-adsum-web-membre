@@ -203,6 +203,7 @@ const DICT: Record<string, { fr: string; en: string }> = {
   "act.phaseEnCours": { fr: "En direct", en: "Live" },
   "act.phaseBientot": { fr: "Bientôt", en: "Soon" },
   "act.phaseAVenir": { fr: "À venir", en: "Upcoming" },
+  "act.phaseADeclarer": { fr: "À déclarer", en: "To declare" },
   "act.phaseTermine": { fr: "Terminée", en: "Ended" },
 
   "part.title": { fr: "Ma participation", en: "My participation" },

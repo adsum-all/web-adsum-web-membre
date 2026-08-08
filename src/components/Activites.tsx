@@ -10,7 +10,7 @@ import { Participation } from "./Participation.js";
 import { Questionnaire } from "./Questionnaire.js";
 import { EmptyState } from "./ui.js";
 
-type TabAct = "en_cours" | "a_venir" | "historique" | "controles";
+type TabAct = "en_cours" | "a_declarer" | "a_venir" | "historique" | "controles";
 const PAGE = 5;
 
 /**
@@ -31,12 +31,19 @@ export function Activites({
   const [limitAvenir, setLimitAvenir] = useState(PAGE);
 
   const groups = useMemo(() => {
-    const g = { enCours: [] as EvenementOut[], aVenir: [] as EvenementOut[] };
+    // An activity whose declaration window is still open belongs to neither the
+    // ongoing list nor the upcoming one. Folded into "ended" it vanished from every
+    // screen, and the answer it was still waiting for became a non-response the
+    // member never chose.
+    const g = { enCours: [] as EvenementOut[], aDeclarer: [] as EvenementOut[], aVenir: [] as EvenementOut[] };
     for (const e of data ?? []) {
       if (e.phase === "en_cours") g.enCours.push(e);
+      else if (e.phase === "a_declarer") g.aDeclarer.push(e);
       else if (e.phase !== "termine") g.aVenir.push(e);
     }
     g.enCours.sort((a, b) => +new Date(a.debut) - +new Date(b.debut));
+    // Most recent first: the one just finished is the one still expecting an answer.
+    g.aDeclarer.sort((a, b) => +new Date(b.debut) - +new Date(a.debut));
     g.aVenir.sort((a, b) => +new Date(a.debut) - +new Date(b.debut));
     return g;
   }, [data]);
@@ -44,14 +51,18 @@ export function Activites({
   // Default tab: EN COURS when something is ongoing, otherwise A VENIR. The
   // member's manual choice is kept afterwards.
   useEffect(() => {
-    if (tab === null && data) setTab(groups.enCours.length > 0 ? "en_cours" : "a_venir");
-  }, [data, groups.enCours.length, tab]);
+    // A pending declaration outranks anything upcoming: it expires, the rest does not.
+    if (tab === null && data) {
+      setTab(groups.enCours.length > 0 ? "en_cours" : groups.aDeclarer.length > 0 ? "a_declarer" : "a_venir");
+    }
+  }, [data, groups.enCours.length, groups.aDeclarer.length, tab]);
 
   const active: TabAct = tab ?? "a_venir";
-  const besoinEvenements = active === "en_cours" || active === "a_venir";
+  const besoinEvenements = active === "en_cours" || active === "a_declarer" || active === "a_venir";
 
   const TABS: { id: TabAct; court: string; complet: string }[] = [
     { id: "en_cours", court: en ? "Ongoing" : "En cours", complet: en ? "Ongoing" : "En cours" },
+    { id: "a_declarer", court: en ? "To declare" : "À déclarer", complet: en ? "Awaiting your declaration" : "En attente de votre déclaration" },
     { id: "a_venir", court: en ? "Upcoming" : "À venir", complet: en ? "Upcoming" : "À venir" },
     { id: "historique", court: en ? "History" : "Historique", complet: en ? "Activity history" : "Historique des activités" },
     { id: "controles", court: en ? "Controls" : "Contrôles", complet: en ? "Access controls" : "Historique des contrôles d'accès" },
@@ -63,7 +74,7 @@ export function Activites({
       <div style={{ display: "flex", gap: 7, overflowX: "auto", padding: "0 2px 12px", WebkitOverflowScrolling: "touch" }}>
         {TABS.map((x) => {
           const on = active === x.id;
-          const compteur = x.id === "en_cours" ? groups.enCours.length : x.id === "a_venir" ? groups.aVenir.length : 0;
+          const compteur = x.id === "en_cours" ? groups.enCours.length : x.id === "a_declarer" ? groups.aDeclarer.length : x.id === "a_venir" ? groups.aVenir.length : 0;
           return (
             <button
               key={x.id}
@@ -87,6 +98,12 @@ export function Activites({
         groups.enCours.length === 0
           ? <EmptyState variant="empty" title={en ? "Nothing ongoing" : "Rien en cours"} text={en ? "No activity is running right now." : "Aucune activité n'est en cours pour le moment."} />
           : <ul className="list" style={{ margin: 0 }}>{groups.enCours.map((e) => <ActiviteItem key={e.id} e={e} token={token} onJoin={onJoin} groupe="enCours" />)}</ul>
+      )}
+
+      {active === "a_declarer" && !loading && !error && (
+        groups.aDeclarer.length === 0
+          ? <EmptyState variant="empty" title={en ? "Nothing to declare" : "Rien à déclarer"} text={en ? "You are up to date: no activity is waiting for your answer." : "Vous êtes à jour : aucune activité n'attend votre réponse."} />
+          : <ul className="list" style={{ margin: 0 }}>{groups.aDeclarer.map((e) => <ActiviteItem key={e.id} e={e} token={token} onJoin={onJoin} groupe="enCours" />)}</ul>
       )}
 
       {active === "a_venir" && !loading && !error && (
@@ -165,6 +182,9 @@ function PhaseBadge({ phase, volet }: Readonly<{ phase: EvenementOut["phase"]; v
   const t = useT();
   if (phase === "en_cours") return <span className="badge badge-ok">{t("act.phaseEnCours")}</span>;
   if (phase === "bientot") return <span className="badge" style={{ background: T.warnbg, color: T.warn }}>{t("act.phaseBientot")}</span>;
+  // Ended, but the answer is still expected and the window closes. Shown as an
+  // alert rather than a neutral badge: the member has something to do, briefly.
+  if (phase === "a_declarer") return <span className="badge" style={{ background: T.warnbg, color: T.warn }}>{t("act.phaseADeclarer")}</span>;
   if (phase === "termine") return <span className="badge badge-mut">{t("act.phaseTermine")}</span>;
   return <span className="badge badge-mut">{t("act.phaseAVenir")} · {volet}</span>;
 }
