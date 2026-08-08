@@ -249,7 +249,7 @@ const DICT: Record<string, { fr: string; en: string }> = {
     en: "This is recorded as a declared attendance, distinct from a check-in confirmed by the control team.",
   },
   "part.qMotif": { fr: "Souhaitez-vous indiquer la raison de votre absence ?", en: "Would you like to give a reason?" },
-  "part.motifAucun": { fr: "Je ne souhaite pas préciser", en: "I prefer not to say" },
+  "part.motifAucun": { fr: "Sélectionnez une raison", en: "Select a reason" },
   "part.motifPrecision": { fr: "Précisez (obligatoire pour ce motif)", en: "Please explain (required for this reason)" },
   "part.absenceNote": {
     fr: "Votre déclaration sera transmise au responsable habilité. Elle ne devient pas automatiquement une absence excusée.",
