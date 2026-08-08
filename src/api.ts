@@ -820,6 +820,45 @@ export function repondreConsultation(
   return authedPost(`/api/v1/membres/me/consultations/${id}/reponses`, token, { reponses }, apiMsg("Envoi impossible", "Sending failed"));
 }
 
+/* ---- Support ------------------------------------------------------------- */
+
+export interface DemandeSupport {
+  id: string;
+  reference: string;
+  sujet: string;
+  /** The member sees open or closed, never the internal state machine. */
+  ouvert: boolean;
+  categorie: string;
+  cree_le: string | null;
+  maj_le: string | null;
+}
+export interface EchangeSupport {
+  id: string;
+  /** True when the member wrote it, false when the support team answered. */
+  entrant: boolean;
+  auteur_nom: string | null;
+  corps: string;
+  cree_le: string | null;
+}
+export function getCategoriesSupport(token: string): Promise<{ code: string; libelle: string }[]> {
+  return authedGet("/api/v1/support/categories", token, apiMsg("Catégories indisponibles", "Categories unavailable"));
+}
+export function getDemandesSupport(token: string): Promise<DemandeSupport[]> {
+  return authedGet<DemandeSupport[]>("/api/v1/support/demandes", token, apiMsg("Demandes indisponibles", "Requests unavailable"));
+}
+export function getDemandeSupport(token: string, id: string): Promise<DemandeSupport & { echanges: EchangeSupport[] }> {
+  return authedGet(`/api/v1/support/demandes/${id}`, token, apiMsg("Demande introuvable", "Request not found"));
+}
+export function ouvrirDemandeSupport(
+  token: string,
+  demande: { sujet: string; message: string; categorie: string },
+): Promise<{ id: string; reference: string }> {
+  return authedPost("/api/v1/support/demandes", token, demande, apiMsg("Envoi impossible", "Could not send"));
+}
+export function completerDemandeSupport(token: string, id: string, message: string): Promise<{ ok: boolean }> {
+  return authedPost(`/api/v1/support/demandes/${id}/messages`, token, { message }, apiMsg("Envoi impossible", "Could not send"));
+}
+
 export function getEvenements(token: string): Promise<EvenementOut[]> {
   return authedGet<EvenementOut[]>("/api/v1/membres/me/evenements", token, apiMsg("Activités indisponibles", "Activities unavailable"));
 }

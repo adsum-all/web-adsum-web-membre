@@ -48,6 +48,7 @@ import { MaHierarchie } from "./components/MaHierarchie.js";
 import { MesApplications } from "./components/MesApplications.js";
 import { Settings } from "./components/Settings.js";
 import { Suivi } from "./components/Suivi.js";
+import { Support } from "./components/Support.js";
 import { TabBar, type TabId } from "./components/TabBar.js";
 import { activerPush, desactiverPush } from "./pushMobile.js";
 
@@ -65,6 +66,7 @@ type ViewId =
   | "demandes"
   | "consultations"
   | "mesApplications"
+  | "support"
   | "hierarchie"
   | "organigramme";
 
@@ -83,6 +85,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   demandes: "profilNav.demandes.title",
   consultations: "profilNav.consultations.title",
   mesApplications: "profilNav.apps.title",
+  support: "profilNav.support.title",
   hierarchie: "profilNav.hierarchie.title",
   organigramme: "profilNav.organigramme.title",
 };
@@ -639,6 +642,8 @@ export function App(): JSX.Element {
           <Demandes token={token} focusId={demandeFocus} />
         ) : view === "consultations" ? (
           <Consultations token={token} />
+        ) : view === "support" ? (
+          <Support token={token} />
         ) : view === "mesApplications" ? (
           <MesApplications token={token} />
         ) : view === "hierarchie" ? (
@@ -717,6 +722,7 @@ export function App(): JSX.Element {
                 onDemandes={() => openDemandes(null)}
                 onConsultations={() => setView("consultations")}
                 onMesApplications={() => setView("mesApplications")}
+                onSupport={() => setView("support")}
                 onHierarchie={() => setView("hierarchie")}
                 demandesBadge={actions?.total ?? 0}
               />
@@ -932,6 +938,7 @@ function Profil({
   onDemandes,
   onConsultations,
   onMesApplications,
+  onSupport,
   onHierarchie,
   demandesBadge = 0,
 }: {
@@ -945,6 +952,7 @@ function Profil({
   onDemandes: () => void;
   onConsultations: () => void;
   onMesApplications: () => void;
+  onSupport: () => void;
   onHierarchie: () => void;
   demandesBadge?: number;
 }): JSX.Element {
@@ -1049,6 +1057,7 @@ function Profil({
       <NavRow glyph="☷" title={t("profilNav.documents.title")} subtitle={t("profilNav.documents.sub")} onClick={onDocuments} />
       <NavRow glyph="▦" title={t("profilNav.apps.title")} subtitle={t("profilNav.apps.sub")} onClick={onMesApplications} />
       <NavRow glyph="⋔" title={t("profilNav.hierarchie.title")} subtitle={t("profilNav.hierarchie.desc")} onClick={onHierarchie} />
+      <NavRow glyph="☎" title={t("profilNav.support.title")} subtitle={t("profilNav.support.sub")} onClick={onSupport} />
       <NavRow glyph="⚙" title={t("profilNav.settings.title")} subtitle={t("profilNav.settings.sub")} onClick={onSettings} />
       <NavRow glyph="↻" title={t("profilNav.recensement.title")} subtitle={t("profilNav.recensement.sub")} onClick={onRecensement} />
     </div>
