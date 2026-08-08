@@ -132,7 +132,8 @@ export interface EvenementOut {
   description?: string | null;
   intervenant_principal?: string | null;
   intervenants?: string[];
-  phase: "a_venir" | "bientot" | "en_cours" | "termine";
+  /** a_declarer: the activity is over but the declaration window is still open. */
+  phase: "a_venir" | "bientot" | "en_cours" | "a_declarer" | "termine";
   joignable: boolean;
   formulaire_ouvert: boolean;
 }
