@@ -16,7 +16,13 @@ function modeLabelKey(mode: string | null | undefined): string {
 }
 
 function phaseLabelKey(phase: string): string {
-  return phase === "en_cours" ? "act.enCours" : phase === "bientot" ? "act.phaseBientot" : phase === "termine" ? "act.phaseTermine" : "act.aVenir";
+  if (phase === "en_cours") return "act.enCours";
+  if (phase === "bientot") return "act.phaseBientot";
+  // Without its own label this fell through to "à venir", telling the member an
+  // activity that has already happened was still ahead of them.
+  if (phase === "a_declarer") return "act.phaseADeclarer";
+  if (phase === "termine") return "act.phaseTermine";
+  return "act.aVenir";
 }
 
 /** The agenda list for the selected day: events first (primary), then a subtle
